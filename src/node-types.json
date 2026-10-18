@@ -1,0 +1,4969 @@
+[
+  {
+    "type": "and_or",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "arithmetic_expansion",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "backquote_substitution",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "brace_group",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "case_clause",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "case_item",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "command_substitution",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "compound_list",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "do_group",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "dollar_single_quote_escape",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "dollar_single_quoted",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "double_quoted",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "else_part",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "escaped_character",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "for_clause",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "function_definition",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "here_document_body",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "if_clause",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "io_redirect",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "list",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "parameter_expansion",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "pipeline",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "program",
+    "named": true,
+    "root": true,
+    "fields": {
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "simple_command",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "single_quoted",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "subshell",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "syntax_issue",
+    "named": true,
+    "fields": {
+      "boundary": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "recovery_eof",
+            "named": true
+          },
+          {
+            "type": "recovery_resume",
+            "named": true
+          }
+        ]
+      },
+      "fault": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "arithmetic_ending_gap",
+            "named": true
+          },
+          {
+            "type": "backquote_gap",
+            "named": true
+          },
+          {
+            "type": "brace_gap",
+            "named": true
+          },
+          {
+            "type": "case_pattern_gap",
+            "named": true
+          },
+          {
+            "type": "case_pattern_separator_error",
+            "named": true
+          },
+          {
+            "type": "case_word_gap",
+            "named": true
+          },
+          {
+            "type": "command_gap",
+            "named": true
+          },
+          {
+            "type": "do_gap",
+            "named": true
+          },
+          {
+            "type": "dollar_quote_gap",
+            "named": true
+          },
+          {
+            "type": "done_gap",
+            "named": true
+          },
+          {
+            "type": "double_quote_gap",
+            "named": true
+          },
+          {
+            "type": "esac_gap",
+            "named": true
+          },
+          {
+            "type": "fi_gap",
+            "named": true
+          },
+          {
+            "type": "for_name_gap",
+            "named": true
+          },
+          {
+            "type": "for_separator_gap",
+            "named": true
+          },
+          {
+            "type": "function_body_gap",
+            "named": true
+          },
+          {
+            "type": "function_parameter_error",
+            "named": true
+          },
+          {
+            "type": "here_document_delimiter_gap",
+            "named": true
+          },
+          {
+            "type": "here_document_ending_gap",
+            "named": true
+          },
+          {
+            "type": "in_gap",
+            "named": true
+          },
+          {
+            "type": "incomplete_escape",
+            "named": true
+          },
+          {
+            "type": "invalid_case_pattern",
+            "named": true
+          },
+          {
+            "type": "invalid_case_word",
+            "named": true
+          },
+          {
+            "type": "invalid_do",
+            "named": true
+          },
+          {
+            "type": "invalid_encoding",
+            "named": true
+          },
+          {
+            "type": "invalid_for_header",
+            "named": true
+          },
+          {
+            "type": "invalid_for_name",
+            "named": true
+          },
+          {
+            "type": "invalid_for_separator",
+            "named": true
+          },
+          {
+            "type": "invalid_function_body",
+            "named": true
+          },
+          {
+            "type": "invalid_here_document_delimiter",
+            "named": true
+          },
+          {
+            "type": "invalid_in",
+            "named": true
+          },
+          {
+            "type": "invalid_parameter_name",
+            "named": true
+          },
+          {
+            "type": "invalid_redirection_target",
+            "named": true
+          },
+          {
+            "type": "nul_character",
+            "named": true
+          },
+          {
+            "type": "parameter_ending_gap",
+            "named": true
+          },
+          {
+            "type": "parameter_length_suffix_error",
+            "named": true
+          },
+          {
+            "type": "parameter_name_gap",
+            "named": true
+          },
+          {
+            "type": "parameter_operator_error",
+            "named": true
+          },
+          {
+            "type": "parameter_operator_gap",
+            "named": true
+          },
+          {
+            "type": "parameter_word_gap",
+            "named": true
+          },
+          {
+            "type": "parenthesis_gap",
+            "named": true
+          },
+          {
+            "type": "redirection_target_gap",
+            "named": true
+          },
+          {
+            "type": "reserved_colon_word",
+            "named": true
+          },
+          {
+            "type": "separator_gap",
+            "named": true
+          },
+          {
+            "type": "single_quote_gap",
+            "named": true
+          },
+          {
+            "type": "substitution_ending_gap",
+            "named": true
+          },
+          {
+            "type": "then_gap",
+            "named": true
+          },
+          {
+            "type": "undefined_backquote_comment",
+            "named": true
+          },
+          {
+            "type": "undefined_backquote_here_document",
+            "named": true
+          },
+          {
+            "type": "undefined_backquote_quote",
+            "named": true
+          },
+          {
+            "type": "undefined_backquote_substitution",
+            "named": true
+          },
+          {
+            "type": "unexpected_ampersand",
+            "named": true
+          },
+          {
+            "type": "unexpected_and_if",
+            "named": true
+          },
+          {
+            "type": "unexpected_case_fallthrough",
+            "named": true
+          },
+          {
+            "type": "unexpected_case_separator",
+            "named": true
+          },
+          {
+            "type": "unexpected_do",
+            "named": true
+          },
+          {
+            "type": "unexpected_elif",
+            "named": true
+          },
+          {
+            "type": "unexpected_else",
+            "named": true
+          },
+          {
+            "type": "unexpected_in",
+            "named": true
+          },
+          {
+            "type": "unexpected_negation",
+            "named": true
+          },
+          {
+            "type": "unexpected_or_if",
+            "named": true
+          },
+          {
+            "type": "unexpected_pipe",
+            "named": true
+          },
+          {
+            "type": "unexpected_semicolon",
+            "named": true
+          },
+          {
+            "type": "unexpected_then",
+            "named": true
+          },
+          {
+            "type": "unmatched_brace",
+            "named": true
+          },
+          {
+            "type": "unmatched_done",
+            "named": true
+          },
+          {
+            "type": "unmatched_esac",
+            "named": true
+          },
+          {
+            "type": "unmatched_fi",
+            "named": true
+          },
+          {
+            "type": "unmatched_parenthesis",
+            "named": true
+          },
+          {
+            "type": "unspecified_control_escape",
+            "named": true
+          },
+          {
+            "type": "unspecified_dollar_quote_escape",
+            "named": true
+          },
+          {
+            "type": "unspecified_empty_hex_escape",
+            "named": true
+          },
+          {
+            "type": "unspecified_expansion_start",
+            "named": true
+          },
+          {
+            "type": "unspecified_here_document_newline",
+            "named": true
+          },
+          {
+            "type": "unspecified_here_document_start",
+            "named": true
+          },
+          {
+            "type": "unspecified_hex_escape",
+            "named": true
+          },
+          {
+            "type": "unspecified_negation_spacing",
+            "named": true
+          },
+          {
+            "type": "unspecified_octal_escape",
+            "named": true
+          },
+          {
+            "type": "unspecified_parameter_quote",
+            "named": true
+          }
+        ]
+      },
+      "fragment": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "recovery_fragment",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "until_clause",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "while_clause",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "word",
+    "named": true,
+    "fields": {
+      "issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      },
+      "unowned_issue": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "syntax_issue",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "and_or",
+          "named": true
+        },
+        {
+          "type": "arithmetic_expansion",
+          "named": true
+        },
+        {
+          "type": "backquote_substitution",
+          "named": true
+        },
+        {
+          "type": "brace_group",
+          "named": true
+        },
+        {
+          "type": "case_clause",
+          "named": true
+        },
+        {
+          "type": "case_item",
+          "named": true
+        },
+        {
+          "type": "command_substitution",
+          "named": true
+        },
+        {
+          "type": "compound_list",
+          "named": true
+        },
+        {
+          "type": "do_group",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quote_escape",
+          "named": true
+        },
+        {
+          "type": "dollar_single_quoted",
+          "named": true
+        },
+        {
+          "type": "double_quoted",
+          "named": true
+        },
+        {
+          "type": "else_part",
+          "named": true
+        },
+        {
+          "type": "escaped_character",
+          "named": true
+        },
+        {
+          "type": "for_clause",
+          "named": true
+        },
+        {
+          "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "here_document_body",
+          "named": true
+        },
+        {
+          "type": "if_clause",
+          "named": true
+        },
+        {
+          "type": "io_redirect",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "parameter_expansion",
+          "named": true
+        },
+        {
+          "type": "pipeline",
+          "named": true
+        },
+        {
+          "type": "simple_command",
+          "named": true
+        },
+        {
+          "type": "single_quoted",
+          "named": true
+        },
+        {
+          "type": "source",
+          "named": true
+        },
+        {
+          "type": "subshell",
+          "named": true
+        },
+        {
+          "type": "until_clause",
+          "named": true
+        },
+        {
+          "type": "while_clause",
+          "named": true
+        },
+        {
+          "type": "word",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "arithmetic_ending_gap",
+    "named": true
+  },
+  {
+    "type": "backquote_gap",
+    "named": true
+  },
+  {
+    "type": "brace_gap",
+    "named": true
+  },
+  {
+    "type": "case_pattern_gap",
+    "named": true
+  },
+  {
+    "type": "case_pattern_separator_error",
+    "named": true
+  },
+  {
+    "type": "case_word_gap",
+    "named": true
+  },
+  {
+    "type": "command_gap",
+    "named": true
+  },
+  {
+    "type": "do_gap",
+    "named": true
+  },
+  {
+    "type": "dollar_quote_gap",
+    "named": true
+  },
+  {
+    "type": "done_gap",
+    "named": true
+  },
+  {
+    "type": "double_quote_gap",
+    "named": true
+  },
+  {
+    "type": "esac_gap",
+    "named": true
+  },
+  {
+    "type": "fi_gap",
+    "named": true
+  },
+  {
+    "type": "for_name_gap",
+    "named": true
+  },
+  {
+    "type": "for_separator_gap",
+    "named": true
+  },
+  {
+    "type": "function_body_gap",
+    "named": true
+  },
+  {
+    "type": "function_parameter_error",
+    "named": true
+  },
+  {
+    "type": "here_document_delimiter_gap",
+    "named": true
+  },
+  {
+    "type": "here_document_ending_gap",
+    "named": true
+  },
+  {
+    "type": "in_gap",
+    "named": true
+  },
+  {
+    "type": "incomplete_escape",
+    "named": true
+  },
+  {
+    "type": "invalid_case_pattern",
+    "named": true
+  },
+  {
+    "type": "invalid_case_word",
+    "named": true
+  },
+  {
+    "type": "invalid_do",
+    "named": true
+  },
+  {
+    "type": "invalid_encoding",
+    "named": true
+  },
+  {
+    "type": "invalid_for_header",
+    "named": true
+  },
+  {
+    "type": "invalid_for_name",
+    "named": true
+  },
+  {
+    "type": "invalid_for_separator",
+    "named": true
+  },
+  {
+    "type": "invalid_function_body",
+    "named": true
+  },
+  {
+    "type": "invalid_here_document_delimiter",
+    "named": true
+  },
+  {
+    "type": "invalid_in",
+    "named": true
+  },
+  {
+    "type": "invalid_parameter_name",
+    "named": true
+  },
+  {
+    "type": "invalid_redirection_target",
+    "named": true
+  },
+  {
+    "type": "nul_character",
+    "named": true
+  },
+  {
+    "type": "parameter_ending_gap",
+    "named": true
+  },
+  {
+    "type": "parameter_length_suffix_error",
+    "named": true
+  },
+  {
+    "type": "parameter_name_gap",
+    "named": true
+  },
+  {
+    "type": "parameter_operator_error",
+    "named": true
+  },
+  {
+    "type": "parameter_operator_gap",
+    "named": true
+  },
+  {
+    "type": "parameter_word_gap",
+    "named": true
+  },
+  {
+    "type": "parenthesis_gap",
+    "named": true
+  },
+  {
+    "type": "recovery_eof",
+    "named": true
+  },
+  {
+    "type": "recovery_fragment",
+    "named": true
+  },
+  {
+    "type": "recovery_resume",
+    "named": true
+  },
+  {
+    "type": "redirection_target_gap",
+    "named": true
+  },
+  {
+    "type": "reserved_colon_word",
+    "named": true
+  },
+  {
+    "type": "separator_gap",
+    "named": true
+  },
+  {
+    "type": "single_quote_gap",
+    "named": true
+  },
+  {
+    "type": "source",
+    "named": true
+  },
+  {
+    "type": "substitution_ending_gap",
+    "named": true
+  },
+  {
+    "type": "then_gap",
+    "named": true
+  },
+  {
+    "type": "undefined_backquote_comment",
+    "named": true
+  },
+  {
+    "type": "undefined_backquote_here_document",
+    "named": true
+  },
+  {
+    "type": "undefined_backquote_quote",
+    "named": true
+  },
+  {
+    "type": "undefined_backquote_substitution",
+    "named": true
+  },
+  {
+    "type": "unexpected_ampersand",
+    "named": true
+  },
+  {
+    "type": "unexpected_and_if",
+    "named": true
+  },
+  {
+    "type": "unexpected_case_fallthrough",
+    "named": true
+  },
+  {
+    "type": "unexpected_case_separator",
+    "named": true
+  },
+  {
+    "type": "unexpected_do",
+    "named": true
+  },
+  {
+    "type": "unexpected_elif",
+    "named": true
+  },
+  {
+    "type": "unexpected_else",
+    "named": true
+  },
+  {
+    "type": "unexpected_in",
+    "named": true
+  },
+  {
+    "type": "unexpected_negation",
+    "named": true
+  },
+  {
+    "type": "unexpected_or_if",
+    "named": true
+  },
+  {
+    "type": "unexpected_pipe",
+    "named": true
+  },
+  {
+    "type": "unexpected_semicolon",
+    "named": true
+  },
+  {
+    "type": "unexpected_then",
+    "named": true
+  },
+  {
+    "type": "unmatched_brace",
+    "named": true
+  },
+  {
+    "type": "unmatched_done",
+    "named": true
+  },
+  {
+    "type": "unmatched_esac",
+    "named": true
+  },
+  {
+    "type": "unmatched_fi",
+    "named": true
+  },
+  {
+    "type": "unmatched_parenthesis",
+    "named": true
+  },
+  {
+    "type": "unspecified_control_escape",
+    "named": true
+  },
+  {
+    "type": "unspecified_dollar_quote_escape",
+    "named": true
+  },
+  {
+    "type": "unspecified_empty_hex_escape",
+    "named": true
+  },
+  {
+    "type": "unspecified_expansion_start",
+    "named": true
+  },
+  {
+    "type": "unspecified_here_document_newline",
+    "named": true
+  },
+  {
+    "type": "unspecified_here_document_start",
+    "named": true
+  },
+  {
+    "type": "unspecified_hex_escape",
+    "named": true
+  },
+  {
+    "type": "unspecified_negation_spacing",
+    "named": true
+  },
+  {
+    "type": "unspecified_octal_escape",
+    "named": true
+  },
+  {
+    "type": "unspecified_parameter_quote",
+    "named": true
+  }
+]

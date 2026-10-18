@@ -1,0 +1,27 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "diagnostic_sh",
+      "title": "Diagnostic POSIX sh",
+      "scope": "source.diagnostic-sh",
+      "path": "."
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "Tree-sitter grammar for diagnostics of POSIX sh.",
+    "links": {
+      "repository": "https://github.com/konomanoasa/tree-sitter-diagnostic-sh"
+    }
+  },
+  "bindings": {
+    "c": false,
+    "go": false,
+    "node": false,
+    "python": false,
+    "rust": true,
+    "swift": false
+  }
+}
