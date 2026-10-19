@@ -259,7 +259,7 @@ static void test_unowned_regions_choose_the_deepest_later_boundary_owner(void) {
   }
 }
 
-static void test_same_start_issues_ignore_recording_order(void) {
+static void test_overlapping_issues_ignore_recording_order(void) {
   const struct {
     enum TokenType owner;
     struct Issue first, second, expected;
@@ -276,6 +276,22 @@ static void test_same_start_issues_ignore_recording_order(void) {
       {INVALID_FOR_NAME, 4, 5, 0, 1, {8, true}},
       {NUL_CHARACTER, 4, 5, 4, 0, {5, true}},
       {NUL_CHARACTER, 4, 5, 4, 0, {5, true}}},
+    {BEGIN_FUNCTION_DEFINITION,
+      {INVALID_FUNCTION_BODY, 4, 8, 0, 1, {19, false}},
+      {INVALID_ENCODING, 6, 7, 6, 0, {7, true}},
+      {INVALID_ENCODING, 6, 7, 6, 0, {7, true}}},
+    {BEGIN_FOR_CLAUSE,
+      {INVALID_FOR_HEADER, 4, 8, 0, 1, {10, true}},
+      {NUL_CHARACTER, 6, 7, 6, 0, {7, true}},
+      {NUL_CHARACTER, 6, 7, 6, 0, {7, true}}},
+    {BEGIN_FUNCTION_DEFINITION,
+      {INVALID_FUNCTION_BODY, 5, 8, 0, 1, {19, false}},
+      {INVALID_ENCODING, 4, 6, 4, 0, {6, true}},
+      {INVALID_ENCODING, 4, 6, 4, 0, {6, true}}},
+    {BEGIN_PARAMETER_EXPANSION,
+      {PARAMETER_OPERATOR_ERROR, 4, 5, 0, 1, {8, true}},
+      {NUL_CHARACTER, 5, 6, 5, 0, {6, true}},
+      {PARAMETER_OPERATOR_ERROR, 4, 5, 0, 1, {8, true}}},
     {BEGIN_PIPELINE,
       {COMMAND_GAP, 4, 4, 0, 1, {8, true}},
       {UNEXPECTED_PIPE, 4, 5, 4, 0, {19, false}},
@@ -392,9 +408,6 @@ static void test_reported_faults_ignore_recording_order(void) {
     parse(&parser);
     clear_parser(&parser);
     assert(!plan.failed);
-    for (size_t i = 0; i < plan.extension_count; i++)
-      plan.issues[plan.extensions[i].issue].recovery =
-        plan.extensions[i].recovery;
     size_t count = plan.issue_count;
     assert(count > 1);
     struct Issue *issues = ts_malloc(count * sizeof(*issues));
@@ -574,6 +587,7 @@ static void test_allocation_failures(void) {
     "echo $'\\c@' $'\\c\\q'\n",
     "cat <<EOF \"a\nb\"\nbody\nEOF\n",
     "cat <<$'\\q'\nbody\nq\n",
+    "echo `cat <<A <<$'\\q' <<F\nA\nq\nF\n`",
     "echo $'\\x123' ${x:@}\n",
     "echo $((1 + $x *",
     "echo $(($x; done",
@@ -723,7 +737,7 @@ int main(void) {
   test_normal_here_documents();
   test_arithmetic_queue_preserves_position_priority_and_fifo();
   test_unowned_regions_choose_the_deepest_later_boundary_owner();
-  test_same_start_issues_ignore_recording_order();
+  test_overlapping_issues_ignore_recording_order();
   test_reported_faults_ignore_recording_order();
   test_eof_gaps_follow_recovery_and_ownership();
   test_nesting_limit();

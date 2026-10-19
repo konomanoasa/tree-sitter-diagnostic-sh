@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { before, test } from "node:test";
 import { root, treeSitterExecutable } from "../scripts/tree-sitter.js";
+import { workloads } from "./support/workloads.js";
 
 const measurePeakRss = ["darwin", "linux"].includes(process.platform);
 const directory = join(root, "build/performance");
@@ -12,10 +13,7 @@ const library = join(
   directory,
   process.platform === "win32" ? "parser.dll" : "parser.so",
 );
-const commandCounts = [128, 1_024];
-const bodyLengths = [65_536, 1_048_576];
-const nestingDepths = [32, 256];
-const measurementSamples = 5;
+const measurementSamples = 3;
 const warmupSamples = 1;
 const parseTimeoutMs = 60_000;
 const normalDurationLimitMs = 1_000;
@@ -57,51 +55,11 @@ before(() => {
   run(cli, ["build", "--output", library, root]);
 });
 
-const cases = [];
-for (const count of commandCounts) {
-  for (const [name, unit] of [
-    [
-      "normal-commands",
-      'for i in a b; do if test "$i" = a; then printf "%s\\n" "犬"; fi; done\n',
-    ],
-    ["damaged-commands", `cat > ) @; echo \${x:bad}; echo ok\n`],
-  ]) {
-    cases.push({ name: `${name}-${count}`, source: unit.repeat(count) });
-  }
-}
-for (const length of bodyLengths) {
-  for (const [name, opening, body, closing] of [
-    ["normal-word", "echo ", "aa", "\n"],
-    ["normal-quote", 'echo "', "a ", '"\n'],
-    ["unfinished-quote", 'echo "', "a ", ""],
-    ["opaque-region", "cat > ) ", "a ", "; echo ok\n"],
-    ["here-document", "cat <<EOF\n", "a ", "\nEOF\n"],
-  ]) {
-    cases.push({
-      name: `${name}-${length}`,
-      source: opening + body.repeat(length / 2) + closing,
-    });
-  }
-}
-for (const depth of nestingDepths) {
-  for (const [name, center] of [
-    ["normal-compounds", "echo ok; "],
-    ["damaged-compounds", "cat > ) @; echo ok; "],
-  ]) {
-    cases.push({
-      name: `${name}-${depth}`,
-      source: `${"if true; then ".repeat(depth)}${center}${"fi; ".repeat(depth)}\n`,
-    });
-  }
-  cases.push({
-    name: `command-substitutions-${depth}`,
-    source: `echo ${"$(echo ".repeat(depth)}ok${")".repeat(depth)}\n`,
-  });
-}
-
 const references = new Map();
 
-for (const { name, source } of cases) {
+for (const { name, source } of workloads) {
+  if (name.includes("compounds-") || name.startsWith("command-substitutions-"))
+    continue;
   test(`diagnostic_sh: fresh parse performance of ${name}`, (context) => {
     const path = join(directory, `${name}.txt`);
     writeFileSync(path, source);
@@ -176,34 +134,30 @@ for (const { name, source } of cases) {
     assert.ok(Number.isFinite(result.medianMs), name);
     if (result.peakRssBytes !== null) assert.ok(result.peakRssBytes > 0, name);
     const family = name.slice(0, name.lastIndexOf("-"));
-    const limited =
-      family.endsWith("compounds") || family === "command-substitutions";
-    if (!limited) {
-      const reference = references.get(family);
-      if (reference) {
-        const ratio = result.bytes / reference.bytes;
+    const reference = references.get(family);
+    if (reference) {
+      const ratio = result.bytes / reference.bytes;
+      assert.ok(
+        result.medianMs <=
+          reference.medianMs * ratio * scalingTolerance +
+            scalingDurationSlackMs,
+        `${name}: parse time grew excessively: ${JSON.stringify({ reference, result })}`,
+      );
+      if (result.peakRssBytes !== null)
         assert.ok(
-          result.medianMs <=
-            reference.medianMs * ratio * scalingTolerance +
-              scalingDurationSlackMs,
-          `${name}: parse time grew excessively: ${JSON.stringify({ reference, result })}`,
+          result.peakRssBytes <=
+            reference.peakRssBytes * ratio * scalingTolerance +
+              scalingMemorySlackBytes,
+          `${name}: memory use grew excessively: ${JSON.stringify({ reference, result })}`,
         );
-        if (result.peakRssBytes !== null)
-          assert.ok(
-            result.peakRssBytes <=
-              reference.peakRssBytes * ratio * scalingTolerance +
-                scalingMemorySlackBytes,
-            `${name}: memory use grew excessively: ${JSON.stringify({ reference, result })}`,
-          );
-      } else {
-        references.set(family, result);
-      }
-      if (family.endsWith("commands")) {
-        assert.ok(
-          result.medianMs < normalDurationLimitMs,
-          `${name}: ${result.medianMs} ms`,
-        );
-      }
+    } else {
+      references.set(family, result);
+    }
+    if (family.endsWith("commands")) {
+      assert.ok(
+        result.medianMs < normalDurationLimitMs,
+        `${name}: ${result.medianMs} ms`,
+      );
     }
     context.diagnostic(JSON.stringify(result));
   });

@@ -7515,16 +7515,32 @@
           "kind": "dollar_single_quote_escape",
           "start": 30
         },
-        "range": [30, 38],
+        "range": [30, 32],
         "fault": {
           "kind": "unspecified_dollar_quote_escape",
           "range": [30, 32]
         },
         "boundary": {
           "kind": "recovery_resume",
-          "range": [38, 38]
+          "range": [32, 32]
         },
-        "fragments": [[32, 38]]
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "dollar_single_quote_escape",
+          "start": 32
+        },
+        "range": [32, 34],
+        "fault": {
+          "kind": "unspecified_dollar_quote_escape",
+          "range": [32, 34]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [34, 34]
+        },
+        "fragments": []
       }
     ]
   },
@@ -11879,16 +11895,25 @@
     ]
   },
   {
-    "name": "a bad dollar-quote escape owns the entire recovery tail",
+    "name": "a bad dollar-quote escape ends before following literal text",
     "source": "echo $'a\\qtail'",
     "expected": [
       {
         "owner": {
           "kind": "dollar_single_quote_escape",
           "start": 8,
-          "end": 14
+          "end": 10
         },
-        "range": [8, 14]
+        "range": [8, 10],
+        "fault": {
+          "kind": "unspecified_dollar_quote_escape",
+          "range": [8, 10]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [10, 10]
+        },
+        "fragments": []
       }
     ]
   },
@@ -12759,6 +12784,595 @@
         "kind": "list",
         "field": null,
         "range": [4, 9]
+      }
+    ]
+  },
+  {
+    "name": "a NUL inside an invalid function body token takes priority after its prefix",
+    "source": "f() a\u0000",
+    "expected": [
+      {
+        "owner": null,
+        "range": [5, 6],
+        "fault": {
+          "kind": "nul_character",
+          "range": [5, 6]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [6, 6]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "an invalid UTF-8 byte inside a function body token keeps its byte range after a multibyte prefix",
+    "source": [102, 40, 41, 32, 231, 140, 171, 255, 97],
+    "expected": [
+      {
+        "owner": null,
+        "range": [7, 8],
+        "fault": {
+          "kind": "invalid_encoding",
+          "range": [7, 8]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [8, 8]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "input faults inside one invalid token retain separate recoveries and a later independent gap",
+    "source": [102, 40, 41, 32, 97, 0, 98, 255, 59, 32, 99, 97, 116, 32, 62],
+    "expected": [
+      {
+        "owner": null,
+        "range": [5, 6],
+        "fault": {
+          "kind": "nul_character",
+          "range": [5, 6]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [6, 6]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [7, 8],
+        "fault": {
+          "kind": "invalid_encoding",
+          "range": [7, 8]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [8, 8]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 14,
+          "end": 15
+        },
+        "range": [15, 15],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [15, 15]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [15, 15]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "an input fault inside an invalid for header token does not inherit header recovery",
+    "source": "for x a\u0000; do :; done",
+    "expected": [
+      {
+        "owner": null,
+        "range": [7, 8],
+        "fault": {
+          "kind": "nul_character",
+          "range": [7, 8]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [8, 8]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "a NUL in a recovery fragment does not replace the earlier confirmed fault",
+    "source": "echo ${x:bad\u0000}",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 5,
+          "end": 14
+        },
+        "range": [9, 13],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [9, 10]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [13, 13]
+        },
+        "fragments": [[10, 13]]
+      }
+    ]
+  },
+  {
+    "name": "adjacent unspecified dollar quote escapes are independent issues",
+    "source": "echo $'\\q\\z'",
+    "expected": [
+      {
+        "owner": {
+          "kind": "dollar_single_quote_escape",
+          "start": 7,
+          "end": 9
+        },
+        "range": [7, 9],
+        "fault": {
+          "kind": "unspecified_dollar_quote_escape",
+          "range": [7, 9]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [9, 9]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "dollar_single_quote_escape",
+          "start": 9,
+          "end": 11
+        },
+        "range": [9, 11],
+        "fault": {
+          "kind": "unspecified_dollar_quote_escape",
+          "range": [9, 11]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [11, 11]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "dollar quote escapes resume before intervening multibyte literal text",
+    "source": "echo $'\\q猫\\z'",
+    "expected": [
+      {
+        "owner": {
+          "kind": "dollar_single_quote_escape",
+          "start": 7,
+          "end": 9
+        },
+        "range": [7, 9],
+        "fault": {
+          "kind": "unspecified_dollar_quote_escape",
+          "range": [7, 9]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [9, 9]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "dollar_single_quote_escape",
+          "start": 12,
+          "end": 14
+        },
+        "range": [12, 14],
+        "fault": {
+          "kind": "unspecified_dollar_quote_escape",
+          "range": [12, 14]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [14, 14]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "a complete unspecified escape at EOF leaves an independent dollar quote gap",
+    "source": "echo $'\\q",
+    "expected": [
+      {
+        "owner": {
+          "kind": "dollar_single_quote_escape",
+          "start": 7,
+          "end": 9
+        },
+        "range": [7, 9],
+        "fault": {
+          "kind": "unspecified_dollar_quote_escape",
+          "range": [7, 9]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [9, 9]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "dollar_single_quoted",
+          "start": 5,
+          "end": 9
+        },
+        "range": [9, 9],
+        "fault": {
+          "kind": "dollar_quote_gap",
+          "range": [9, 9]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [9, 9]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "an incomplete escape after a recovered escape suppresses the derived quote gap",
+    "source": "echo $'\\q\\",
+    "expected": [
+      {
+        "owner": {
+          "kind": "dollar_single_quote_escape",
+          "start": 7,
+          "end": 9
+        },
+        "range": [7, 9],
+        "fault": {
+          "kind": "unspecified_dollar_quote_escape",
+          "range": [7, 9]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [9, 9]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "dollar_single_quote_escape",
+          "start": 9,
+          "end": 10
+        },
+        "range": [9, 10],
+        "fault": {
+          "kind": "incomplete_escape",
+          "range": [9, 10]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [10, 10]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "each unspecified escape form resumes at its own lexical end",
+    "source": "echo $'\\xg\\c@\\777\\q'",
+    "expected": [
+      {
+        "owner": {
+          "kind": "dollar_single_quote_escape",
+          "start": 7,
+          "end": 9
+        },
+        "range": [7, 9],
+        "fault": {
+          "kind": "unspecified_empty_hex_escape",
+          "range": [7, 9]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [9, 9]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "dollar_single_quote_escape",
+          "start": 10,
+          "end": 13
+        },
+        "range": [10, 13],
+        "fault": {
+          "kind": "unspecified_control_escape",
+          "range": [10, 13]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [13, 13]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "dollar_single_quote_escape",
+          "start": 13,
+          "end": 17
+        },
+        "range": [13, 17],
+        "fault": {
+          "kind": "unspecified_octal_escape",
+          "range": [13, 17]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [17, 17]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "dollar_single_quote_escape",
+          "start": 17,
+          "end": 19
+        },
+        "range": [17, 19],
+        "fault": {
+          "kind": "unspecified_dollar_quote_escape",
+          "range": [17, 19]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [19, 19]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "multiple unspecified delimiter escapes remain in one unrecoverable here-document region",
+    "source": "cat <<$'\\q\\z'\nbody\nqz\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "dollar_single_quote_escape",
+          "start": 8,
+          "end": 22
+        },
+        "range": [8, 22],
+        "fault": {
+          "kind": "unspecified_dollar_quote_escape",
+          "range": [8, 10]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [22, 22]
+        },
+        "fragments": [[10, 22]]
+      }
+    ]
+  },
+  {
+    "name": "an undecidable escape delimiter skipped by header recovery keeps the header region to EOF",
+    "source": "for x a <<$'\\q'; do :; done\nbody\nq\necho $%\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "for_clause",
+          "start": 0,
+          "end": 43
+        },
+        "range": [6, 43],
+        "fault": {
+          "kind": "invalid_for_header",
+          "range": [6, 7]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [43, 43]
+        },
+        "fragments": [[7, 43]]
+      }
+    ]
+  },
+  {
+    "name": "an undecodable delimiter skipped by header recovery keeps the header region to EOF past a later here-document",
+    "source": [
+      102, 111, 114, 32, 120, 32, 97, 32, 60, 60, 69, 255, 32, 60, 60, 70, 59,
+      32, 100, 111, 32, 58, 59, 32, 100, 111, 110, 101, 10, 98, 111, 100, 121,
+      10, 69, 255, 10, 102, 10, 70, 10, 101, 99, 104, 111, 32, 36, 37, 10
+    ],
+    "expected": [
+      {
+        "owner": {
+          "kind": "for_clause",
+          "start": 0,
+          "end": 49
+        },
+        "range": [6, 49],
+        "fault": {
+          "kind": "invalid_for_header",
+          "range": [6, 7]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [49, 49]
+        },
+        "fragments": [[7, 49]]
+      }
+    ]
+  },
+  {
+    "name": "an undecodable delimiter skipped by unexpected token recovery keeps the unowned region to EOF",
+    "source": [
+      124, 32, 97, 32, 60, 60, 69, 255, 10, 98, 111, 100, 121, 10, 69, 255, 10,
+      101, 99, 104, 111, 32, 36, 37, 10
+    ],
+    "expected": [
+      {
+        "owner": null,
+        "range": [0, 25],
+        "fault": {
+          "kind": "unexpected_pipe",
+          "range": [0, 1]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [25, 25]
+        },
+        "fragments": [[1, 25]]
+      }
+    ]
+  },
+  {
+    "name": "an undecidable escape inside an arithmetic delimiter skipped by header recovery keeps the header region to EOF",
+    "source": "for x a <<$((`echo $'\\q'`+1)); do :; done\nbody\necho $%\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "for_clause",
+          "start": 0,
+          "end": 55
+        },
+        "range": [6, 55],
+        "fault": {
+          "kind": "invalid_for_header",
+          "range": [6, 7]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [55, 55]
+        },
+        "fragments": [[7, 55]]
+      }
+    ]
+  },
+  {
+    "name": "an uncertain delimiter suppresses later body faults even when an end line is present and preserves outer issues",
+    "source": "echo `cat <<$'\\q' <<F\nq\nF\n`; cat >",
+    "expected": [
+      {
+        "owner": {
+          "kind": "dollar_single_quote_escape",
+          "start": 14,
+          "end": 26
+        },
+        "range": [14, 26],
+        "fault": {
+          "kind": "unspecified_dollar_quote_escape",
+          "range": [14, 16]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [26, 26]
+        },
+        "fragments": [[16, 26]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 33,
+          "end": 34
+        },
+        "range": [34, 34],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [34, 34]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [34, 34]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "an uncertain delimiter suppresses later body faults when no end line is present",
+    "source": "echo `cat <<$'\\q' <<F\nbody\n`",
+    "expected": [
+      {
+        "owner": {
+          "kind": "dollar_single_quote_escape",
+          "start": 14,
+          "end": 27
+        },
+        "range": [14, 27],
+        "fault": {
+          "kind": "unspecified_dollar_quote_escape",
+          "range": [14, 16]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [27, 27]
+        },
+        "fragments": [[16, 27]]
+      }
+    ]
+  },
+  {
+    "name": "an uncertain delimiter caused by invalid UTF-8 suppresses later body faults at a closing backquote",
+    "source": [
+      101, 99, 104, 111, 32, 96, 99, 97, 116, 32, 60, 60, 69, 255, 32, 60, 60,
+      70, 10, 69, 255, 10, 70, 10, 96
+    ],
+    "expected": [
+      {
+        "owner": null,
+        "range": [13, 24],
+        "fault": {
+          "kind": "invalid_encoding",
+          "range": [13, 14]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [24, 24]
+        },
+        "fragments": [[14, 24]]
+      }
+    ]
+  },
+  {
+    "name": "an uncertain delimiter after a completed body suppresses remaining queued body faults",
+    "source": "echo `cat <<A <<$'\\q' <<F\nA\nq\nF\n`",
+    "expected": [
+      {
+        "owner": {
+          "kind": "dollar_single_quote_escape",
+          "start": 18,
+          "end": 32
+        },
+        "range": [18, 32],
+        "fault": {
+          "kind": "unspecified_dollar_quote_escape",
+          "range": [18, 20]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [32, 32]
+        },
+        "fragments": [[20, 32]]
       }
     ]
   }

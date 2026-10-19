@@ -17,8 +17,6 @@ npm install @konomanoasa/tree-sitter-diagnostic-sh
 
 ## Development
 
-Development uses Node.js 24.21.0 or later.
-
 ```sh
 npm install
 npm run build

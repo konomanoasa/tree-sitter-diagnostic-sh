@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { diagnosticStructure } from "./support/cst.js";
 import { parse } from "./support/parser.js";
 import cases from "./support/parser-cases.json" with { type: "json" };
+import { workloads } from "./support/workloads.js";
 
 for (const [name, word, expected] of [
   ["single quote", "$'text'", {}],
@@ -959,10 +960,10 @@ const interactions = [
     normal: "echo $'\\ntail'",
     issues: [
       {
-        range: [7, 13],
+        range: [7, 9],
         owner: {
           kind: "dollar_single_quote_escape",
-          range: [7, 13],
+          range: [7, 9],
         },
         fault: {
           kind: "unspecified_dollar_quote_escape",
@@ -970,9 +971,9 @@ const interactions = [
         },
         boundary: {
           kind: "recovery_resume",
-          range: [13, 13],
+          range: [9, 9],
         },
-        fragments: [[9, 13]],
+        fragments: [],
       },
     ],
   },
@@ -1138,4 +1139,10 @@ for (const context of contexts) {
       assert.deepEqual(actual.issues, []);
     });
   }
+}
+
+for (const { name, source } of workloads) {
+  test(`diagnostic_sh: ${name} preserves source through EOF`, () => {
+    parse(source);
+  });
 }

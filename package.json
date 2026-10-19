@@ -24,10 +24,11 @@
     "check": "biome check . && tsc --noEmit",
     "format": "biome format --write .",
     "generate": "npm run tree-sitter -- generate-all",
-    "test": "node --test --test-concurrency=1 \"test/*.test.js\"",
+    "test": "node --test --test-concurrency=1 test/cst.test.js test/parser.test.js",
     "test:sanitize": "node scripts/check-c.js --sanitize",
     "test:scanner": "node scripts/check-c.js",
-    "tree-sitter": "node scripts/tree-sitter.js"
+    "tree-sitter": "node scripts/tree-sitter.js",
+    "test:performance": "node --test test/performance.test.js"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

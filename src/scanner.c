@@ -147,6 +147,7 @@ struct Capture {
   size_t count, capacity;
   bool quoted, failed, newlines_only;
   struct Unit newline;
+  size_t uncertain;
   struct Capture *parent;
 };
 struct Rejected {
@@ -179,8 +180,7 @@ struct Owner {
 };
 // Defer region extension until publication so rejected probes can discard it.
 struct Extension {
-  size_t issue;
-  struct Recovery recovery;
+  size_t position, resume;
 };
 struct Plan {
   struct Issue *issues;
@@ -1382,6 +1382,17 @@ static void capture_change(
   }
 }
 
+static void capture_uncertain(struct Input *input, size_t position) {
+  for (
+    struct Capture *capture = input->capture; capture; capture = capture->parent
+  )
+    if (
+      !capture->newlines_only &&
+      (!capture->uncertain || position < capture->uncertain - 1)
+    )
+      capture->uncertain = position + 1;
+}
+
 static void capture_newline(struct Input *input, struct Unit unit) {
   if (unit.value == '\n')
     for (
@@ -1445,7 +1456,6 @@ static bool expansion_escape(int32_t c) {
   return c == '$' || c == '`' || c == '\\';
 }
 
-// Bound recursion to protect the C stack.
 enum { NESTING_LIMIT = 512 };
 
 static bool nest(struct Parser *parser) {
@@ -1660,7 +1670,8 @@ static void issue(
   report(parser, fault, recovery);
 }
 
-static void extend_issue(struct Parser *parser, size_t index, size_t resume) {
+static void
+extend_region(struct Parser *parser, size_t position, size_t resume) {
   struct Plan *plan = parser->plan;
   if (plan->failed) return;
   struct Extension *grown = diagnostic_grow(
@@ -1675,7 +1686,7 @@ static void extend_issue(struct Parser *parser, size_t index, size_t resume) {
   }
   plan->extensions = grown;
   plan->extensions[plan->extension_count++] =
-    (struct Extension){index, {resume, false}};
+    (struct Extension){position, resume};
 }
 
 static bool backquote_cut(struct Parser *parser, enum TokenType kind) {
@@ -1976,6 +1987,19 @@ static void parameter(struct Parser *parser, bool double_quoted) {
   parser->closer = parent_closer;
 }
 
+static bool undecidable_delimiter_fault(enum TokenType kind) {
+  switch (kind) {
+    case UNSPECIFIED_DOLLAR_QUOTE_ESCAPE:
+    case UNSPECIFIED_EMPTY_HEX_ESCAPE:
+    case UNSPECIFIED_CONTROL_ESCAPE:
+    case UNSPECIFIED_HEX_ESCAPE:
+    case UNSPECIFIED_OCTAL_ESCAPE:
+      return true;
+    default:
+      return false;
+  }
+}
+
 static int hex_value(int32_t c) {
   if (is_decimal_digit(c)) return c - '0';
   if (c >= 'a' && c <= 'f') return c - 'a' + 10;
@@ -2079,6 +2103,7 @@ dollar_quote_escape(struct Parser *parser, struct Unit *unit) {
     unit->end = input->units[input->position - 1].end;
     capture_change(input, *unit, unit->value, true);
   }
+  if (undecidable_delimiter_fault(fault)) capture_uncertain(input, unit->start);
   if (!end) end = unit->end;
   owner_end(parser, owner, end);
   return (struct Fault){fault, unit->start, end, owner};
@@ -2088,28 +2113,26 @@ static void dollar_quote(struct Parser *parser, struct Text *text) {
   struct Input *input = &parser->input;
   struct Unit opening = pop(input);
   capture_change(input, opening, -1, true);
-  struct Fault fault = {.kind = TOKEN_TYPE_COUNT};
-  size_t boundary = input->end;
   bool closed = false;
   while (!parser->plan->failed && input->position < input->count) {
     struct Unit unit = read_raw(input);
     if (unit.value == '\'') {
       capture_change(input, unit, -1, true);
-      boundary = unit.start;
       closed = true;
       break;
     }
     if (unit.value == '\\') {
       struct Fault escape = dollar_quote_escape(parser, &unit);
-      if (fault.kind == TOKEN_TYPE_COUNT && escape.kind != TOKEN_TYPE_COUNT)
-        fault = escape;
+      if (escape.kind != TOKEN_TYPE_COUNT)
+        report(
+          parser,
+          escape,
+          (struct Recovery){escape.end, escape.kind != INCOMPLETE_ESCAPE}
+        );
     }
     text_push(parser, text, unit);
   }
-  if (fault.kind != TOKEN_TYPE_COUNT)
-    report(parser, fault, (struct Recovery){boundary, closed});
-  else if (!closed)
-    unclosed(parser, UNDEFINED_BACKQUOTE_QUOTE, DOLLAR_QUOTE_GAP);
+  if (!closed) unclosed(parser, UNDEFINED_BACKQUOTE_QUOTE, DOLLAR_QUOTE_GAP);
 }
 
 struct BackquoteInput {
@@ -2288,6 +2311,8 @@ arithmetic_valid(struct Plan *plan, const struct Text *content, bool open) {
 static void
 replay_capture(struct Parser *parser, const struct Capture *capture) {
   if (capture->newline.end) capture_newline(&parser->input, capture->newline);
+  if (capture->uncertain)
+    capture_uncertain(&parser->input, capture->uncertain - 1);
   for (size_t i = 0; i < capture->count; i++) {
     struct Change change = capture->changes[i];
     capture_change(
@@ -2560,7 +2585,6 @@ static struct Token lex(struct Parser *parser) {
   return token;
 }
 
-// A newline inside a saved token cannot start the pending here-document body.
 static void saved_token_newline(struct Parser *parser, struct Unit newline) {
   if (!newline.end || parser->token.kind == NEWLINE) return;
   report(
@@ -2824,15 +2848,15 @@ static void documents(struct Parser *parser, bool at_line_start) {
   for (size_t document = 0; document < parser->document_count; document++) {
     struct Document *here = &parser->documents[document];
     if (here->uncertain) {
-      extend_issue(parser, here->uncertain - 1, input->end);
+      extend_region(parser, here->uncertain - 1, input->end);
       input->position = input->count;
-      at_line_start = false;
-    } else {
-      at_line_start = here_document(parser, here, at_line_start, body_start);
-      body_start = consumed_offset(input);
+      break;
     }
-    ts_free(here->delimiter.units);
+    at_line_start = here_document(parser, here, at_line_start, body_start);
+    body_start = consumed_offset(input);
   }
+  for (size_t document = 0; document < parser->document_count; document++)
+    ts_free(parser->documents[document].delimiter.units);
   parser->document_count = 0;
 }
 
@@ -2992,23 +3016,10 @@ static bool stop_or_end(struct Parser *parser, uint32_t stops) {
   return token->kind == END || (stop(token) & (stops | parser->stops));
 }
 
-static bool undecidable_delimiter_fault(enum TokenType kind) {
-  switch (kind) {
-    case UNSPECIFIED_DOLLAR_QUOTE_ESCAPE:
-    case UNSPECIFIED_EMPTY_HEX_ESCAPE:
-    case UNSPECIFIED_CONTROL_ESCAPE:
-    case UNSPECIFIED_HEX_ESCAPE:
-    case UNSPECIFIED_OCTAL_ESCAPE:
-      return true;
-    default:
-      return false;
-  }
-}
-
 // Decode faults precede word faults and are sorted by start.
-static size_t uncertain_delimiter(
+static size_t uncertain_position(
   const struct Plan *plan,
-  size_t since,
+  const struct Capture *capture,
   size_t start,
   size_t end
 ) {
@@ -3018,18 +3029,13 @@ static size_t uncertain_delimiter(
     if (plan->issues[middle].start < start) low = middle + 1;
     else high = middle;
   }
-  size_t uncertain =
-    low < plan->decode_issues && plan->issues[low].start < end ? low + 1 : 0;
-  for (size_t i = since; i < plan->issue_count; i++) {
-    const struct Issue *found = &plan->issues[i];
-    if (
-      found->start >= start &&
-      found->start < end &&
-      undecidable_delimiter_fault(found->kind) &&
-      (!uncertain || found->start < plan->issues[uncertain - 1].start)
-    )
-      uncertain = i + 1;
-  }
+  size_t uncertain = capture->uncertain;
+  if (
+    low < plan->decode_issues &&
+    plan->issues[low].start < end &&
+    (!uncertain || plan->issues[low].start < uncertain - 1)
+  )
+    uncertain = plan->issues[low].start + 1;
   return uncertain;
 }
 
@@ -3038,7 +3044,6 @@ static bool declare_here_document(
   bool strip,
   const struct Capture *capture,
   size_t begin,
-  size_t since,
   const struct Token *target
 ) {
   struct Document *grown = diagnostic_grow(
@@ -3065,7 +3070,7 @@ static bool declare_here_document(
     .quoted = capture->quoted,
     .strip = strip,
     .uncertain =
-      uncertain_delimiter(parser->plan, since, target->start, target->end)
+      uncertain_position(parser->plan, capture, target->start, target->end)
   };
   return true;
 }
@@ -3078,7 +3083,7 @@ enum RecoveryBoundary {
 static bool redirect_operand(struct Parser *parser, enum Lexeme kind) {
   bool here = kind == HERE || kind == HERE_STRIP;
   struct Capture capture = {.parent = parser->input.capture};
-  size_t begin = parser->input.position, since = parser->plan->issue_count;
+  size_t begin = parser->input.position;
   bool quoted_delimiter = parser->quoted_delimiter;
   if (here) {
     parser->input.capture = &capture;
@@ -3097,7 +3102,6 @@ static bool redirect_operand(struct Parser *parser, enum Lexeme kind) {
         kind == HERE_STRIP,
         &capture,
         begin,
-        since,
         target
       ))
   )
@@ -3773,6 +3777,11 @@ static int compare_issues(const void *left, const void *right) {
   return a->start < b->start ? -1 : a->start != b->start;
 }
 
+static int compare_extensions(const void *left, const void *right) {
+  const struct Extension *a = left, *b = right;
+  return a->position < b->position ? -1 : a->position != b->position;
+}
+
 static bool event(struct Scanner *scanner, enum TokenType kind, size_t end) {
   struct Event *grown = diagnostic_grow(
     scanner->events,
@@ -4003,7 +4012,6 @@ static size_t place_unowned(
   return best;
 }
 
-// Stages are compared only after ownership and lexical context agree.
 static unsigned requirement_order(enum TokenType kind) {
   switch (kind) {
     case INVALID_FOR_HEADER:
@@ -4053,15 +4061,17 @@ static bool ancestor(const struct Plan *plan, size_t outer, size_t inner) {
   return false;
 }
 
+static bool input_fault(enum TokenType kind) {
+  return kind == INVALID_ENCODING || kind == NUL_CHARACTER;
+}
+
 static bool replaces_issue(
   const struct Plan *plan,
   const struct Issue *candidate,
   const struct Issue *current
 ) {
-  bool current_input =
-    current->kind == INVALID_ENCODING || current->kind == NUL_CHARACTER;
-  bool candidate_input =
-    candidate->kind == INVALID_ENCODING || candidate->kind == NUL_CHARACTER;
+  bool current_input = input_fault(current->kind);
+  bool candidate_input = input_fault(candidate->kind);
   if (current_input != candidate_input) return candidate_input;
   if (!!candidate->owner != !!current->owner) return candidate->owner != 0;
   if (candidate->owner && current->owner) {
@@ -4113,13 +4123,29 @@ static size_t select_regions(struct Plan *plan, size_t end) {
       sizeof(*plan->issues),
       compare_issues
     );
-  size_t count = 0;
+  if (plan->extension_count > 1)
+    qsort(
+      plan->extensions,
+      plan->extension_count,
+      sizeof(*plan->extensions),
+      compare_extensions
+    );
+  size_t count = 0, input = 0, extension = 0;
   for (size_t i = 0; i < plan->issue_count;) {
+    if (input < i) input = i;
+    while (input < plan->issue_count && !input_fault(plan->issues[input].kind))
+      input++;
     size_t start = plan->issues[i].start;
     struct Issue current = {0};
     bool found = false;
     for (; i < plan->issue_count && plan->issues[i].start == start; i++) {
       const struct Issue *candidate = &plan->issues[i];
+      if (
+        !input_fault(candidate->kind) &&
+        input < plan->issue_count &&
+        plan->issues[input].start < candidate->end
+      )
+        continue;
       if (
         covered(plan, candidate, count ? &plan->issues[count - 1] : NULL, end)
       )
@@ -4130,6 +4156,14 @@ static size_t select_regions(struct Plan *plan, size_t end) {
       }
     }
     if (!found) continue;
+    for (; extension < plan->extension_count; extension++) {
+      size_t position = plan->extensions[extension].position;
+      size_t resume = plan->extensions[extension].resume;
+      if (position > current.start && position >= current.recovery.position)
+        break;
+      if (position >= current.start && resume >= current.recovery.position)
+        current.recovery = (struct Recovery){resume, false};
+    }
     plan->issues[count++] = current;
     if (
       current.owner &&
@@ -4206,9 +4240,6 @@ static bool append_unowned(
 
 static bool publish(struct Scanner *scanner, struct Plan *plan, size_t end) {
   if (plan->failed) return false;
-  for (size_t i = 0; i < plan->extension_count; i++)
-    plan->issues[plan->extensions[i].issue].recovery =
-      plan->extensions[i].recovery;
   plan->issue_count = select_regions(plan, end);
   extend_ancestors(plan);
   size_t count = plan->issue_count;
