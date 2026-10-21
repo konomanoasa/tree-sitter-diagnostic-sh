@@ -723,6 +723,213 @@ enum {
   ARITHMETIC_RULE_COUNT = sizeof(arithmetic_rules) / sizeof(*arithmetic_rules)
 };
 
+// Only assignment needs lvalue tracking; operator results are non-lvalues.
+enum ArithmeticOperator {
+  ARITHMETIC_OP_LEFT,
+  ARITHMETIC_OP_QUESTION,
+  ARITHMETIC_OP_ASSIGN,
+  ARITHMETIC_OP_CONDITIONAL,
+  ARITHMETIC_OP_BINARY,
+  ARITHMETIC_OP_UNARY,
+};
+
+static unsigned arithmetic_precedence(enum ArithmeticOperator operation) {
+  switch (operation) {
+    case ARITHMETIC_OP_ASSIGN:
+      return 1;
+    case ARITHMETIC_OP_QUESTION:
+    case ARITHMETIC_OP_CONDITIONAL:
+      return 2;
+    case ARITHMETIC_OP_BINARY:
+      return 3;
+    case ARITHMETIC_OP_UNARY:
+      return 4;
+    default:
+      return 0;
+  }
+}
+
+static bool arithmetic_reduce(
+  enum ArithmeticOperator operation,
+  uint8_t *values,
+  size_t *count
+) {
+  size_t operands = operation == ARITHMETIC_OP_UNARY ? 1
+    : operation == ARITHMETIC_OP_CONDITIONAL         ? 3
+                                                     : 2;
+  if (
+    operation == ARITHMETIC_OP_LEFT ||
+    operation == ARITHMETIC_OP_QUESTION ||
+    *count < operands
+  )
+    return false;
+  *count -= operands;
+  if (operation == ARITHMETIC_OP_ASSIGN && !values[*count]) return false;
+  values[(*count)++] = false;
+  return true;
+}
+
+static enum ArithmeticValidation
+arithmetic_literal(const int32_t *source, size_t length) {
+  uint8_t *values = ts_malloc((length + 1) * sizeof(*values));
+  uint8_t *operations = ts_malloc((length + 1) * sizeof(*operations));
+  enum ArithmeticValidation result = ARITHMETIC_VALIDATION_RESOURCE_FAILURE;
+  if (!values || !operations) goto finish;
+  result = ARITHMETIC_VALIDATION_INVALID;
+  size_t value_count = 0, operation_count = 0, position = 0;
+  bool operand = true;
+  while (position < length) {
+    if (arithmetic_whitespace(source[position])) {
+      position++;
+      continue;
+    }
+    int state = LEX_START;
+    while (position < length) {
+      int next = arithmetic_lex((uint8_t)state, source[position]);
+      if (next == LEX_INVALID) goto finish;
+      if (next == LEX_STOP) break;
+      state = next;
+      position++;
+    }
+    uint16_t token = arithmetic_tokens[state];
+    if (!token) goto finish;
+    if (operand) {
+      if (token & (1u << ARITHMETIC_UNARY_OPERATOR))
+        operations[operation_count++] = ARITHMETIC_OP_UNARY;
+      else if (token & (1u << ARITHMETIC_LEFT))
+        operations[operation_count++] = ARITHMETIC_OP_LEFT;
+      else if (token & ((1u << ARITHMETIC_NAME) | (1u << ARITHMETIC_NUMBER))) {
+        values[value_count++] = (token & (1u << ARITHMETIC_NAME)) != 0;
+        operand = false;
+      } else goto finish;
+      continue;
+    }
+    if (token & ((1u << ARITHMETIC_RIGHT) | (1u << ARITHMETIC_COLON))) {
+      enum ArithmeticOperator stop = token & (1u << ARITHMETIC_RIGHT)
+        ? ARITHMETIC_OP_LEFT
+        : ARITHMETIC_OP_QUESTION;
+      while (operation_count && operations[operation_count - 1] != stop) {
+        if (!arithmetic_reduce(
+              operations[--operation_count],
+              values,
+              &value_count
+            ))
+          goto finish;
+      }
+      if (!operation_count) goto finish;
+      if (stop == ARITHMETIC_OP_LEFT) operation_count--;
+      else {
+        operations[operation_count - 1] = ARITHMETIC_OP_CONDITIONAL;
+        operand = true;
+      }
+      continue;
+    }
+    enum ArithmeticOperator operation;
+    if (token & (1u << ARITHMETIC_ASSIGNMENT_OPERATOR))
+      operation = ARITHMETIC_OP_ASSIGN;
+    else if (token & (1u << ARITHMETIC_QUESTION))
+      operation = ARITHMETIC_OP_QUESTION;
+    else if (token & (1u << ARITHMETIC_BINARY_OPERATOR))
+      operation = ARITHMETIC_OP_BINARY;
+    else goto finish;
+    while (operation_count) {
+      enum ArithmeticOperator previous = operations[operation_count - 1];
+      if (previous == ARITHMETIC_OP_LEFT || previous == ARITHMETIC_OP_QUESTION)
+        break;
+      if (
+        arithmetic_precedence(previous) < arithmetic_precedence(operation) ||
+        (arithmetic_precedence(previous) == arithmetic_precedence(operation) &&
+          operation != ARITHMETIC_OP_BINARY)
+      )
+        break;
+      operation_count--;
+      if (!arithmetic_reduce(previous, values, &value_count)) goto finish;
+    }
+    operations[operation_count++] = operation;
+    operand = true;
+  }
+  if (operand) goto finish;
+  while (operation_count)
+    if (!arithmetic_reduce(operations[--operation_count], values, &value_count))
+      goto finish;
+  if (value_count == 1) result = ARITHMETIC_VALIDATION_VALID;
+finish:
+  ts_free(values);
+  ts_free(operations);
+  return result;
+}
+
+// Holes leave the outer stack unknown; only later punctuation constrains it.
+// Check each outermost hole-free group once.
+static enum ArithmeticValidation
+arithmetic_check_structure(const int32_t *source, size_t length) {
+  struct ArithmeticGroup {
+    size_t start, end;
+  };
+  struct ArithmeticGroup *groups = NULL;
+  size_t *stack = NULL;
+  size_t group_count = 0, group_capacity = 0, depth = 0, capacity = 0;
+  bool unknown = false;
+  enum ArithmeticValidation result = ARITHMETIC_VALIDATION_VALID;
+  for (size_t i = 0; i < length; i++) {
+    int32_t c = source[i];
+    if (c == -1) {
+      depth = 0;
+      unknown = true;
+    } else if (c == '(' || c == '?') {
+      size_t *grown =
+        diagnostic_grow(stack, &capacity, depth + 1, sizeof(*grown));
+      if (!grown) {
+        result = ARITHMETIC_VALIDATION_RESOURCE_FAILURE;
+        goto finish;
+      }
+      stack = grown;
+      stack[depth++] = i;
+    } else if (c == ')' || c == ':') {
+      if (!depth) {
+        if (unknown) continue;
+        result = ARITHMETIC_VALIDATION_INVALID;
+        goto finish;
+      }
+      size_t start = stack[--depth];
+      if (source[start] != (c == ')' ? '(' : '?')) {
+        result = ARITHMETIC_VALIDATION_INVALID;
+        goto finish;
+      }
+      if (c != ')') continue;
+      while (group_count && groups[group_count - 1].start > start)
+        group_count--;
+      struct ArithmeticGroup *grown = diagnostic_grow(
+        groups,
+        &group_capacity,
+        group_count + 1,
+        sizeof(*grown)
+      );
+      if (!grown) {
+        result = ARITHMETIC_VALIDATION_RESOURCE_FAILURE;
+        goto finish;
+      }
+      groups = grown;
+      groups[group_count++] = (struct ArithmeticGroup){start, i + 1};
+    }
+  }
+  if (depth) {
+    result = ARITHMETIC_VALIDATION_INVALID;
+    goto finish;
+  }
+  for (size_t i = 0; i < group_count; i++) {
+    result = arithmetic_literal(
+      source + groups[i].start,
+      groups[i].end - groups[i].start
+    );
+    if (result != ARITHMETIC_VALIDATION_VALID) break;
+  }
+finish:
+  ts_free(groups);
+  ts_free(stack);
+  return result;
+}
+
 static uint8_t
 arithmetic_symbol(const struct ArithmeticRule *rule, size_t dot) {
   return rule->right[rule->length - dot - 1];
@@ -1279,6 +1486,12 @@ validate_arithmetic(const int32_t *source, size_t length) {
   ) {
     return result;
   }
+  bool dynamic = false;
+  for (size_t i = 0; i < length; i++) dynamic |= source[i] == -1;
+  if (!dynamic) return arithmetic_literal(source, length);
+  result = arithmetic_check_structure(source, length);
+  if (result != ARITHMETIC_VALIDATION_VALID) return result;
+  result = ARITHMETIC_VALIDATION_RESOURCE_FAILURE;
   graph.vertex_ids = ts_malloc((length + 1) * sizeof(*graph.vertex_ids));
   graph.visited = ts_calloc(length + 1, sizeof(*graph.visited));
   graph.emitted = ts_calloc(length + 1, sizeof(*graph.emitted));

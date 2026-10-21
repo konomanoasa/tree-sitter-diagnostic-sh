@@ -13375,5 +13375,120 @@
         "fragments": [[20, 32]]
       }
     ]
+  },
+  {
+    "name": "a fixed missing ternary colon rejects arithmetic before later expansions",
+    "source": "echo $(( (1?2) + $x ))",
+    "expected": [
+      {
+        "owner": {
+          "kind": "compound_list",
+          "start": 9
+        },
+        "range": [15, 15],
+        "fault": {
+          "kind": "separator_gap",
+          "range": [15, 15]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [15, 15]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "an earlier expansion cannot repair a fixed missing ternary colon",
+    "source": "echo $(( ($x?2) + $y ))",
+    "expected": [
+      {
+        "owner": {
+          "kind": "compound_list",
+          "start": 9
+        },
+        "range": [16, 16],
+        "fault": {
+          "kind": "separator_gap",
+          "range": [16, 16]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [16, 16]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "an expansion after a question can supply the missing ternary branch",
+    "source": "echo $(( (1 ? $x) + 2",
+    "expected": [
+      {
+        "owner": {
+          "kind": "arithmetic_expansion",
+          "start": 5
+        },
+        "range": [21, 21],
+        "fault": {
+          "kind": "arithmetic_ending_gap",
+          "range": [21, 21]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [21, 21]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "an expansion before a colon can supply its question and operand",
+    "source": "echo $(( ($x : 2) + 1",
+    "expected": [
+      {
+        "owner": {
+          "kind": "arithmetic_expansion",
+          "start": 5
+        },
+        "range": [21, 21],
+        "fault": {
+          "kind": "arithmetic_ending_gap",
+          "range": [21, 21]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [21, 21]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "an expansion can complete the context around a fixed parenthesized operand",
+    "source": "echo $(( ($x (2)) + 1",
+    "expected": [
+      {
+        "owner": {
+          "kind": "arithmetic_expansion",
+          "start": 5
+        },
+        "range": [21, 21],
+        "fault": {
+          "kind": "arithmetic_ending_gap",
+          "range": [21, 21]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [21, 21]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "literal arithmetic preserves parenthesized lvalues and assignment in the true branch",
+    "source": "echo $(( ((a) = b ? c = d : e) + 1 ))",
+    "expected": []
   }
 ]

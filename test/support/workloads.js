@@ -1,6 +1,7 @@
 const commandCounts = [128, 512, 1024];
 const bodyLengths = [65536, 262144, 1048576];
 const nestingDepths = [32, 128, 256];
+const arithmeticFragmentCounts = [128, 512, 1024];
 
 export const workloads = [];
 for (const count of commandCounts) {
@@ -21,10 +22,27 @@ for (const length of bodyLengths) {
     ["unfinished-quote", 'echo "', "a ", ""],
     ["opaque-region", "cat > ) ", "a ", "; echo ok\n"],
     ["here-document", "cat <<EOF\n", "a ", "\nEOF\n"],
+    ["literal-arithmetic", "echo $((1", "+1", "))\n"],
+    ["conditional-arithmetic", "echo $((", "1?1:", "1))\n"],
   ]) {
     workloads.push({
       name: `${name}-${length}`,
-      source: opening + body.repeat(length / 2) + closing,
+      source: opening + body.repeat(length / body.length) + closing,
+    });
+  }
+}
+for (const count of arithmeticFragmentCounts) {
+  const fragments = "+$x".repeat(count);
+  for (const [name, expression] of [
+    ["normal-dynamic-arithmetic", `1${fragments}`],
+    ["invalid-arithmetic-prefix", `(1?2)${fragments}`],
+    ["invalid-arithmetic-middle", `1${fragments}+(1?2)${fragments}`],
+    ["invalid-arithmetic-suffix", `1${fragments}+(1?2)`],
+    ["invalid-dynamic-arithmetic-prefix", `($x?2)${fragments}`],
+  ]) {
+    workloads.push({
+      name: `${name}-${count}`,
+      source: `echo $(( ${expression} ))\n`,
     });
   }
 }
