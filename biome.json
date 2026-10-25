@@ -1,16 +1,15 @@
 {
   "files": {
-    "includes": [
-      "**",
-      "!!**/build",
-      "!!**/target",
-      "!**/src/grammar.json",
-      "!**/src/node-types.json"
-    ]
+    "includes": ["**/*.js"]
   },
   "formatter": {
     "indentStyle": "space",
     "indentWidth": 2,
     "lineWidth": 80
+  },
+  "vcs": {
+    "clientKind": "git",
+    "enabled": true,
+    "useIgnoreFile": true
   }
 }

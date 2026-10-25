@@ -1783,6 +1783,10 @@
                   },
                   {
                     "type": "SYMBOL",
+                    "name": "special_builtin_function_name"
+                  },
+                  {
+                    "type": "SYMBOL",
                     "name": "function_body_gap"
                   },
                   {
@@ -2152,6 +2156,10 @@
                   {
                     "type": "SYMBOL",
                     "name": "brace_gap"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "special_builtin_function_name"
                   },
                   {
                     "type": "SYMBOL",
@@ -2670,6 +2678,10 @@
     {
       "type": "SYMBOL",
       "name": "brace_gap"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "special_builtin_function_name"
     },
     {
       "type": "SYMBOL",

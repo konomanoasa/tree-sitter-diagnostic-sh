@@ -21,17 +21,17 @@
   },
   "scripts": {
     "build": "npm run tree-sitter -- build-all",
-    "check": "biome check . && tsc --noEmit",
+    "check": "biome check . && tsc",
     "format": "biome format --write .",
     "generate": "npm run tree-sitter -- generate-all",
     "test": "node --test --test-concurrency=1 test/cst.test.js test/parser.test.js",
+    "test:performance": "node --test test/performance.test.js",
     "test:sanitize": "node scripts/check-c.js --sanitize",
     "test:scanner": "node scripts/check-c.js",
-    "tree-sitter": "node scripts/tree-sitter.js",
-    "test:performance": "node --test test/performance.test.js"
+    "tree-sitter": "node scripts/tree-sitter.js"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
+    "@biomejs/biome": "2.6.2",
     "@types/node": "26.6.5",
     "tree-sitter-cli": "0.27.1",
     "typescript": "7.0.2"

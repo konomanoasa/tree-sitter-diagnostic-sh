@@ -1939,6 +1939,463 @@
     ]
   },
   {
+    "name": "consecutive unexpected semicolons each resume at their own end",
+    "source": "; ; ;",
+    "expected": [
+      {
+        "owner": null,
+        "range": [0, 1],
+        "fault": {
+          "kind": "unexpected_semicolon",
+          "range": [0, 1]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [1, 1]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [2, 3],
+        "fault": {
+          "kind": "unexpected_semicolon",
+          "range": [2, 3]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [3, 3]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [4, 5],
+        "fault": {
+          "kind": "unexpected_semicolon",
+          "range": [4, 5]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [5, 5]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "consecutive unexpected ampersands each resume at their own end",
+    "source": "& &",
+    "expected": [
+      {
+        "owner": null,
+        "range": [0, 1],
+        "fault": {
+          "kind": "unexpected_ampersand",
+          "range": [0, 1]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [1, 1]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [2, 3],
+        "fault": {
+          "kind": "unexpected_ampersand",
+          "range": [2, 3]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [3, 3]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "mixed unexpected separators restart command parsing after each fault",
+    "source": "; & ; : & ; & :\n",
+    "expected": [
+      {
+        "owner": null,
+        "range": [0, 1],
+        "fault": {
+          "kind": "unexpected_semicolon",
+          "range": [0, 1]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [1, 1]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [2, 3],
+        "fault": {
+          "kind": "unexpected_ampersand",
+          "range": [2, 3]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [3, 3]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [4, 5],
+        "fault": {
+          "kind": "unexpected_semicolon",
+          "range": [4, 5]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [5, 5]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [10, 11],
+        "fault": {
+          "kind": "unexpected_semicolon",
+          "range": [10, 11]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [11, 11]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [12, 13],
+        "fault": {
+          "kind": "unexpected_ampersand",
+          "range": [12, 13]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [13, 13]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "normal command terminators leave later separators to be diagnosed independently",
+    "source": "echo first; ; & echo second & & ; echo third;\n",
+    "expected": [
+      {
+        "owner": null,
+        "range": [12, 13],
+        "fault": {
+          "kind": "unexpected_semicolon",
+          "range": [12, 13]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [13, 13]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [14, 15],
+        "fault": {
+          "kind": "unexpected_ampersand",
+          "range": [14, 15]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [15, 15]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [30, 31],
+        "fault": {
+          "kind": "unexpected_ampersand",
+          "range": [30, 31]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [31, 31]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [32, 33],
+        "fault": {
+          "kind": "unexpected_semicolon",
+          "range": [32, 33]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [33, 33]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "separator recovery crosses continuations comments and newlines without consuming another separator",
+    "source": ";\\\n & # comment\n; & :\n",
+    "expected": [
+      {
+        "owner": null,
+        "range": [0, 1],
+        "fault": {
+          "kind": "unexpected_semicolon",
+          "range": [0, 1]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [1, 1]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [4, 5],
+        "fault": {
+          "kind": "unexpected_ampersand",
+          "range": [4, 5]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [5, 5]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [16, 17],
+        "fault": {
+          "kind": "unexpected_semicolon",
+          "range": [16, 17]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [17, 17]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [18, 19],
+        "fault": {
+          "kind": "unexpected_ampersand",
+          "range": [18, 19]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [19, 19]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "unexpected separators in a compound list preserve its closing parenthesis",
+    "source": "( ; & :; ; & )\n",
+    "expected": [
+      {
+        "owner": null,
+        "range": [2, 3],
+        "fault": {
+          "kind": "unexpected_semicolon",
+          "range": [2, 3]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [3, 3]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [4, 5],
+        "fault": {
+          "kind": "unexpected_ampersand",
+          "range": [4, 5]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [5, 5]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [9, 10],
+        "fault": {
+          "kind": "unexpected_semicolon",
+          "range": [9, 10]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [10, 10]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [11, 12],
+        "fault": {
+          "kind": "unexpected_ampersand",
+          "range": [11, 12]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [12, 12]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "a recovery boundary consumes one separator before diagnosing the next",
+    "source": "echo ) skipped; ; :\n",
+    "expected": [
+      {
+        "owner": null,
+        "range": [5, 14],
+        "fault": {
+          "kind": "unmatched_parenthesis",
+          "range": [5, 6]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [14, 14]
+        },
+        "fragments": [[6, 14]]
+      },
+      {
+        "owner": null,
+        "range": [16, 17],
+        "fault": {
+          "kind": "unexpected_semicolon",
+          "range": [16, 17]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [17, 17]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "unexpected separators preserve collection of a pending here-document body",
+    "source": "cat <<E; ; &\nbody\nE\n; & :\n",
+    "expected": [
+      {
+        "owner": null,
+        "range": [9, 10],
+        "fault": {
+          "kind": "unexpected_semicolon",
+          "range": [9, 10]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [10, 10]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [11, 12],
+        "fault": {
+          "kind": "unexpected_ampersand",
+          "range": [11, 12]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [12, 12]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [20, 21],
+        "fault": {
+          "kind": "unexpected_semicolon",
+          "range": [20, 21]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [21, 21]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [22, 23],
+        "fault": {
+          "kind": "unexpected_ampersand",
+          "range": [22, 23]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [23, 23]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "an operator after separator recovery keeps its own recovery boundary",
+    "source": "; | ; & :\n",
+    "expected": [
+      {
+        "owner": null,
+        "range": [0, 1],
+        "fault": {
+          "kind": "unexpected_semicolon",
+          "range": [0, 1]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [1, 1]
+        },
+        "fragments": []
+      },
+      {
+        "owner": null,
+        "range": [2, 4],
+        "fault": {
+          "kind": "unexpected_pipe",
+          "range": [2, 3]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [4, 4]
+        },
+        "fragments": [[3, 4]]
+      },
+      {
+        "owner": null,
+        "range": [6, 7],
+        "fault": {
+          "kind": "unexpected_ampersand",
+          "range": [6, 7]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [7, 7]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
     "name": "an orphan case separator resumes before a following semicolon",
     "source": "x ;;; y",
     "expected": [
@@ -2561,9 +3018,515 @@
     "expected": []
   },
   {
-    "name": "utility-name constraints on functions are outside grammatical NAME checks",
-    "source": "export() { :; }\n",
+    "name": "every special built-in function name has its own fault",
+    "source": "break() { :; }\ncontinue() { :; }\neval() { :; }\nexec() { :; }\nexit() { :; }\nexport() { :; }\nreadonly() { :; }\nreturn() { :; }\nset() { :; }\nshift() { :; }\ntimes() { :; }\ntrap() { :; }\nunset() { :; }\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 0,
+          "end": 14
+        },
+        "range": [0, 5],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [0, 5]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [5, 5]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 15,
+          "end": 32
+        },
+        "range": [15, 23],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [15, 23]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [23, 23]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 33,
+          "end": 46
+        },
+        "range": [33, 37],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [33, 37]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [37, 37]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 47,
+          "end": 60
+        },
+        "range": [47, 51],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [47, 51]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [51, 51]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 61,
+          "end": 74
+        },
+        "range": [61, 65],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [61, 65]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [65, 65]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 75,
+          "end": 90
+        },
+        "range": [75, 81],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [75, 81]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [81, 81]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 91,
+          "end": 108
+        },
+        "range": [91, 99],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [91, 99]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [99, 99]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 109,
+          "end": 124
+        },
+        "range": [109, 115],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [109, 115]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [115, 115]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 125,
+          "end": 137
+        },
+        "range": [125, 128],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [125, 128]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [128, 128]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 138,
+          "end": 152
+        },
+        "range": [138, 143],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [138, 143]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [143, 143]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 153,
+          "end": 167
+        },
+        "range": [153, 158],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [153, 158]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [158, 158]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 168,
+          "end": 181
+        },
+        "range": [168, 172],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [168, 172]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [172, 172]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 182,
+          "end": 196
+        },
+        "range": [182, 187],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [182, 187]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [187, 187]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "special built-in spellings remain valid outside function names",
+    "source": "break; continue; eval; exec; exit; export; readonly; return; set; shift; times; trap; unset\nexport=ok readonly=ok\nfor readonly in value; do :; done\nexported() { :; }; readonly_() { :; }; Readonly() { :; }; command() { :; }; printf() { :; }\n",
     "expected": []
+  },
+  {
+    "name": "a special built-in word at EOF has not started a function",
+    "source": "export",
+    "expected": []
+  },
+  {
+    "name": "a newline separates a special built-in call from a subshell",
+    "source": "export\n(:)\n",
+    "expected": []
+  },
+  {
+    "name": "a continued special built-in function name excludes surrounding layout",
+    "source": " \tex\\\nport\\\n () { :; }\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 2,
+          "end": 22
+        },
+        "range": [2, 10],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [2, 10]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [10, 10]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "a special built-in function name inside a command substitution retains its owner",
+    "source": "echo $(readonly() { :; })\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 7,
+          "end": 24
+        },
+        "range": [7, 15],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [7, 15]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [15, 15]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "a special built-in function name follows backquote continuation removal",
+    "source": ": `un\\\\\nset() { :; }`\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 3,
+          "end": 20
+        },
+        "range": [3, 11],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [3, 11]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [11, 11]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "a special built-in function name inside a here-document substitution is diagnosed",
+    "source": "cat <<EOF\n$(trap() { :; })\nEOF\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 12,
+          "end": 25
+        },
+        "range": [12, 16],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [12, 16]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [16, 16]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "a special built-in function name preserves parameter body and following faults",
+    "source": "export(x) nope; cat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 0,
+          "end": 14
+        },
+        "range": [0, 6],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [0, 6]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [6, 6]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 0,
+          "end": 14
+        },
+        "range": [7, 8],
+        "fault": {
+          "kind": "function_parameter_error",
+          "range": [7, 8]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [8, 8]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 0,
+          "end": 14
+        },
+        "range": [10, 14],
+        "fault": {
+          "kind": "invalid_function_body",
+          "range": [10, 14]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [14, 14]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 20,
+          "end": 21
+        },
+        "range": [21, 21],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [21, 21]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [21, 21]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "a special built-in function name does not hide an unfinished header",
+    "source": "export(",
+    "expected": [
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 0,
+          "end": 7
+        },
+        "range": [0, 6],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [0, 6]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [6, 6]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 0,
+          "end": 7
+        },
+        "range": [7, 7],
+        "fault": {
+          "kind": "parenthesis_gap",
+          "range": [7, 7]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [7, 7]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "a special built-in function name is not diagnosed inside an opaque recovery region",
+    "source": "cat > (export() { :; }); cat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 4,
+          "end": 23
+        },
+        "range": [6, 23],
+        "fault": {
+          "kind": "invalid_redirection_target",
+          "range": [6, 7]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [23, 23]
+        },
+        "fragments": [[7, 23]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 29,
+          "end": 30
+        },
+        "range": [30, 30],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [30, 30]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [30, 30]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "a special built-in function name retains byte offsets after multibyte source",
+    "source": "echo é; export() { :; }\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "function_definition",
+          "start": 9,
+          "end": 24
+        },
+        "range": [9, 15],
+        "fault": {
+          "kind": "special_builtin_function_name",
+          "range": [9, 15]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [15, 15]
+        },
+        "fragments": []
+      }
+    ]
   },
   {
     "name": "a case header rejects a real word before in",
@@ -3963,6 +4926,144 @@
     "name": "hexadecimal delimiter bytes match UTF-8 source",
     "source": "cat <<$'\\xc3\\xa9'\nbody\né\n",
     "expected": []
+  },
+  {
+    "name": "a hexadecimal non-UTF-8 delimiter value leaves only an ending gap",
+    "source": "cat <<$'\\xFF'\nbody\nÿ\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "here_document_body",
+          "start": 14,
+          "end": 28
+        },
+        "range": [28, 28],
+        "fault": {
+          "kind": "here_document_ending_gap",
+          "range": [28, 28]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [28, 28]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "an octal non-UTF-8 delimiter value leaves only an ending gap",
+    "source": "cat <<$'\\377'\nbody\nÿ\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "here_document_body",
+          "start": 14,
+          "end": 28
+        },
+        "range": [28, 28],
+        "fault": {
+          "kind": "here_document_ending_gap",
+          "range": [28, 28]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [28, 28]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "an incomplete UTF-8 delimiter value leaves only an ending gap",
+    "source": "cat <<$'\\xC3'\nbody\nÿ\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "here_document_body",
+          "start": 14,
+          "end": 28
+        },
+        "range": [28, 28],
+        "fault": {
+          "kind": "here_document_ending_gap",
+          "range": [28, 28]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [28, 28]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "a non-UTF-8 delimiter value is neither deleted nor replaced during matching",
+    "source": "cat <<a$'\\xFF'b\nab\na�b\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "here_document_body",
+          "start": 16,
+          "end": 31
+        },
+        "range": [31, 31],
+        "fault": {
+          "kind": "here_document_ending_gap",
+          "range": [31, 31]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [31, 31]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "an overlong UTF-8 delimiter value does not match its decoded character",
+    "source": "cat <<$'\\xC0\\xAF'\n/\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "here_document_body",
+          "start": 18,
+          "end": 26
+        },
+        "range": [26, 26],
+        "fault": {
+          "kind": "here_document_ending_gap",
+          "range": [26, 26]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [26, 26]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter bytes joined across quotes expose the following command fault",
+    "source": "cat <<$'\\xC3'$'\\277'\nbody\nÿ\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 33,
+          "end": 34
+        },
+        "range": [34, 34],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [34, 34]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [34, 34]
+        },
+        "fragments": []
+      }
+    ]
   },
   {
     "name": "quoted body keeps escaped newline source",
@@ -13490,5 +14591,70 @@
     "name": "literal arithmetic preserves parenthesized lvalues and assignment in the true branch",
     "source": "echo $(( ((a) = b ? c = d : e) + 1 ))",
     "expected": []
+  },
+  {
+    "name": "header recovery stays opaque at EOF before a here-document body",
+    "source": "for x + <<do",
+    "expected": [
+      {
+        "owner": { "kind": "for_clause", "start": 0, "end": 12 },
+        "range": [6, 12],
+        "fault": { "kind": "invalid_for_header", "range": [6, 7] },
+        "boundary": { "kind": "recovery_eof", "range": [12, 12] },
+        "fragments": [[7, 12]]
+      }
+    ]
+  },
+  {
+    "name": "header recovery stays opaque at EOF inside a here-document body",
+    "source": "for x + <<do\n${x:bad}\ndone\n",
+    "expected": [
+      {
+        "owner": { "kind": "for_clause", "start": 0, "end": 27 },
+        "range": [6, 27],
+        "fault": { "kind": "invalid_for_header", "range": [6, 7] },
+        "boundary": { "kind": "recovery_eof", "range": [27, 27] },
+        "fragments": [[7, 27]]
+      }
+    ]
+  },
+  {
+    "name": "header recovery stays opaque at EOF inside a brace group",
+    "source": "for x + { :;",
+    "expected": [
+      {
+        "owner": { "kind": "for_clause", "start": 0, "end": 12 },
+        "range": [6, 12],
+        "fault": { "kind": "invalid_for_header", "range": [6, 7] },
+        "boundary": { "kind": "recovery_eof", "range": [12, 12] },
+        "fragments": [[7, 12]]
+      }
+    ]
+  },
+  {
+    "name": "header recovery stays opaque at EOF inside a for loop",
+    "source": "for x + for y; do :;",
+    "expected": [
+      {
+        "owner": { "kind": "for_clause", "start": 0, "end": 20 },
+        "range": [6, 20],
+        "fault": { "kind": "invalid_for_header", "range": [6, 7] },
+        "boundary": { "kind": "recovery_eof", "range": [20, 20] },
+        "fragments": [[7, 20]]
+      }
+    ]
+  },
+  {
+    "name": "header recovery stays opaque at EOF inside a conditional",
+    "source": "for x + if :; then :;",
+    "expected": [
+      {
+        "owner": { "kind": "for_clause", "start": 0, "end": 21 },
+        "range": [6, 21],
+        "fault": { "kind": "invalid_for_header", "range": [6, 7] },
+        "boundary": { "kind": "recovery_eof", "range": [21, 21] },
+        "fragments": [[7, 21]]
+      }
+    ]
   }
 ]

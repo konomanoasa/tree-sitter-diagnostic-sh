@@ -3,7 +3,6 @@ import { test } from "node:test";
 import { diagnosticStructure } from "./support/cst.js";
 import { parse } from "./support/parser.js";
 import cases from "./support/parser-cases.json" with { type: "json" };
-import { workloads } from "./support/workloads.js";
 
 for (const [name, word, expected] of [
   ["single quote", "$'text'", {}],
@@ -89,16 +88,16 @@ for (const [context, prefix, fault] of [
   ["double quotes", 'echo "', "double_quote_gap"],
   ["a here-document body", "cat <<EOF\n", "here_document_ending_gap"],
 ]) {
-  test(`a backslash at EOF in ${context} leaves only the enclosing ending missing`, () => {
-    for (const tail of ["", "\\"]) {
+  for (const tail of ["", "\\"]) {
+    test(`a backslash at EOF in ${context} leaves only the enclosing ending missing: tail ${JSON.stringify(tail)}`, () => {
       const source = prefix + tail;
       const end = Buffer.byteLength(source);
       assert.deepEqual(
         parse(source).issues.map(({ fault }) => fault),
         [{ kind: fault, range: [end, end] }],
       );
-    }
-  });
+    });
+  }
 }
 
 for (const separator of [";;", ";&"]) {
@@ -106,8 +105,8 @@ for (const separator of [";;", ";&"]) {
     ["case clause", "case x in ", " esac\n"],
     ["nested case clause", "case x in a) case y in ", " esac;; esac\n"],
   ]) {
-    test(`an orphan ${separator} in a ${context} resumes before the next item`, () => {
-      for (const item of ["", " a) :;;"]) {
+    for (const item of ["", " a) :;;"]) {
+      test(`an orphan ${separator} in a ${context} resumes before the next item: next item ${JSON.stringify(item)}`, () => {
         const start = Buffer.byteLength(prefix);
         assert.deepEqual(
           parse(`${prefix}${separator}${item}${suffix}`).issues,
@@ -130,8 +129,8 @@ for (const separator of [";;", ";&"]) {
             },
           ],
         );
-      }
-    });
+      });
+    }
   }
 }
 
@@ -143,8 +142,8 @@ for (const operator of [">", "<<"]) {
     "(x) ",
     "(x >hidden) ",
   ]) {
-    test(`${operator} recovers after ${JSON.stringify(opaque)} at an independent redirect`, () => {
-      for (const redirect of [">", "2>", "2\\\n>"]) {
+    for (const redirect of [">", "2>", "2\\\n>"]) {
+      test(`${operator} recovers after ${JSON.stringify(opaque)} at an independent redirect: ${JSON.stringify(redirect)}`, () => {
         const prefix = `cat ${operator} `;
         const next = Buffer.byteLength(prefix + opaque);
         const source = `${prefix}${opaque}${redirect}out >\n`;
@@ -175,8 +174,8 @@ for (const operator of [">", "<<"]) {
             },
           ],
         );
-      }
-    });
+      });
+    }
   }
 }
 
@@ -290,8 +289,8 @@ for (const [name, word, rejected, delimiter] of [
     "$(printf 'a')$(printf b)",
   ],
 ]) {
-  test(`here-document delimiter ${name} matches only its quoted spelling`, () => {
-    for (const operator of ["<<", "<<-"]) {
+  for (const operator of ["<<", "<<-"]) {
+    test(`here-document delimiter ${name} matches only its quoted spelling: ${operator}`, () => {
       const prefix = `cat ${operator}${word}\n`;
       const indent = operator === "<<-" ? "\t" : "";
       const source = `${prefix}${indent}$%\n${indent}${rejected}\n${indent})\n${indent}${delimiter}\ncat >\n`;
@@ -329,8 +328,8 @@ for (const [name, word, rejected, delimiter] of [
         parse(`${incomplete}${indent}${delimiter}\n`).issues,
         [],
       );
-    }
-  });
+    });
+  }
 }
 
 for (const [name, prefix, suffix] of [
@@ -560,27 +559,6 @@ for (const [name, prefix, recovery] of [
         fault: { kind: "redirection_target_gap", range: [gap, gap] },
         boundary: { kind: "recovery_resume", range: [gap, gap] },
         fragments: [],
-      },
-    ]);
-  });
-}
-
-for (const [name, source] of [
-  ["before a here-document body", "for x + <<do"],
-  ["inside a here-document body", `for x + <<do\n\${x:bad}\ndone\n`],
-  ["inside a brace group", "for x + { :;"],
-  ["inside a for loop", "for x + for y; do :;"],
-  ["inside a conditional", "for x + if :; then :;"],
-]) {
-  test(`header recovery stays opaque at EOF ${name}`, () => {
-    const end = Buffer.byteLength(source);
-    assert.deepEqual(parse(source).issues, [
-      {
-        owner: { kind: "for_clause", range: [0, end] },
-        range: [6, end],
-        fault: { kind: "invalid_for_header", range: [6, 7] },
-        boundary: { kind: "recovery_eof", range: [end, end] },
-        fragments: [[7, end]],
       },
     ]);
   });
@@ -1139,10 +1117,4 @@ for (const context of contexts) {
       assert.deepEqual(actual.issues, []);
     });
   }
-}
-
-for (const { name, source } of workloads) {
-  test(`diagnostic_sh: ${name} preserves source through EOF`, () => {
-    parse(source);
-  });
 }

@@ -6,7 +6,9 @@ import {
   diagnosticStructure,
   parseCst,
 } from "./support/cst.js";
+import { parse } from "./support/parser.js";
 import cases from "./support/parser-cases.json" with { type: "json" };
+import { workloads } from "./support/workloads.js";
 
 test("CST decoding retains UTF-8 ranges, direct fields and issue fragments", () => {
   const source = "é)\n";
@@ -184,3 +186,9 @@ test("every public fault has an explicit CST expectation", () => {
   );
   assert.deepEqual([...covered].sort(), faults.map((node) => node.type).sort());
 });
+
+for (const { name, source } of workloads) {
+  test(`diagnostic_sh: ${name} preserves source through EOF`, () => {
+    parse(source);
+  });
+}

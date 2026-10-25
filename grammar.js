@@ -81,6 +81,7 @@ const faults = [
   "case_pattern_separator_error",
   "parenthesis_gap",
   "brace_gap",
+  "special_builtin_function_name",
   "function_body_gap",
   "invalid_function_body",
   "function_parameter_error",

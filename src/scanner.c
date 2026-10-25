@@ -94,6 +94,7 @@ enum TokenType {
   CASE_PATTERN_SEPARATOR_ERROR,
   PARENTHESIS_GAP,
   BRACE_GAP,
+  SPECIAL_BUILTIN_FUNCTION_NAME,
   FUNCTION_BODY_GAP,
   INVALID_FUNCTION_BODY,
   FUNCTION_PARAMETER_ERROR,
@@ -178,7 +179,7 @@ struct Owner {
   size_t first, limit;
   bool retained;
 };
-// Defer region extension until publication so rejected probes can discard it.
+// Defer extensions so rejected probes leave no changes.
 struct Extension {
   size_t position, resume;
 };
@@ -669,7 +670,7 @@ static bool arithmetic_build_graph(struct ArithmeticGraph *graph) {
       if (!arithmetic_step(graph, origin, graph->pending[i])) return false;
       if (graph->valid) return true;
     }
-    // Clearing only the visited positions keeps each origin's lexing linear.
+    // Avoid rescanning the full source for each origin.
     for (size_t i = 0; i < graph->pending_count; i++)
       graph->visited[graph->pending[i].position] = 0;
     for (size_t i = 0; i < graph->endpoint_count; i++) {
@@ -723,7 +724,6 @@ enum {
   ARITHMETIC_RULE_COUNT = sizeof(arithmetic_rules) / sizeof(*arithmetic_rules)
 };
 
-// Only assignment needs lvalue tracking; operator results are non-lvalues.
 enum ArithmeticOperator {
   ARITHMETIC_OP_LEFT,
   ARITHMETIC_OP_QUESTION,
@@ -859,8 +859,7 @@ finish:
   return result;
 }
 
-// Holes leave the outer stack unknown; only later punctuation constrains it.
-// Check each outermost hole-free group once.
+// Holes invalidate the outer stack.
 static enum ArithmeticValidation
 arithmetic_check_structure(const int32_t *source, size_t length) {
   struct ArithmeticGroup {
@@ -1506,7 +1505,6 @@ validate_arithmetic(const int32_t *source, size_t length) {
     result = ARITHMETIC_VALIDATION_VALID;
     goto finish;
   }
-  // Reading backward exposes assignment constraints before ambiguous prefixes.
   result = arithmetic_reverse_graph(&graph);
   if (result != ARITHMETIC_VALIDATION_VALID) goto finish;
   result = arithmetic_project_graph(&graph);
@@ -1763,6 +1761,7 @@ static const uint64_t fault_owners[TOKEN_TYPE_COUNT] = {
     OWNER_BIT(BEGIN_CASE_ITEM) |
     OWNER_BIT(BEGIN_FUNCTION_DEFINITION),
   [BRACE_GAP] = OWNER_BIT(BEGIN_BRACE_GROUP),
+  [SPECIAL_BUILTIN_FUNCTION_NAME] = OWNER_BIT(BEGIN_FUNCTION_DEFINITION),
   [FUNCTION_BODY_GAP] = OWNER_BIT(BEGIN_FUNCTION_DEFINITION),
   [INVALID_FUNCTION_BODY] = OWNER_BIT(BEGIN_FUNCTION_DEFINITION),
   [FUNCTION_PARAMETER_ERROR] = OWNER_BIT(BEGIN_FUNCTION_DEFINITION),
@@ -1848,7 +1847,6 @@ static void owned_issue(
   };
 }
 
-// Backquote faults rank by the lexical context they interrupt, not by owner.
 static size_t fault_context(const struct Parser *parser, struct Fault fault) {
   const struct Owner *owners = parser->plan->owners;
   switch (fault.kind) {
@@ -2708,7 +2706,7 @@ static struct Token word(struct Parser *parser) {
     prefix_name = false;
   }
   token.end = consumed_offset(input);
-  token.name = token.plain && prefix_name && count > 0;
+  token.name = prefix_name && count > 0;
   if (
     token.plain &&
     digits_only(&token.text) &&
@@ -3044,7 +3042,7 @@ static bool here_document(
     here_document_lines(parser, here, &body, &at_line_start, &boundary);
   if (!here->quoted) here_body(parser, body, boundary);
   ts_free(body.units);
-  // An unstarted body has no owner, so its gap must not climb to an outer body.
+  // An unstarted body's gap must not belong to an outer body.
   if (!found && !backquote_cut(parser, UNDEFINED_BACKQUOTE_HERE_DOCUMENT))
     report(
       parser,
@@ -3115,6 +3113,27 @@ static bool spelling(const struct Token *token, const char *value) {
   for (; i < token->text.count && value[i]; i++)
     if (token->text.units[i].value != (unsigned char)value[i]) return false;
   return i == token->text.count && !value[i];
+}
+
+static bool special_builtin_name(const struct Token *token) {
+  static const char *const names[] = {
+    "break",
+    "continue",
+    "eval",
+    "exec",
+    "exit",
+    "export",
+    "readonly",
+    "return",
+    "set",
+    "shift",
+    "times",
+    "trap",
+    "unset",
+  };
+  for (size_t i = 0; i < sizeof(names) / sizeof(*names); i++)
+    if (spelling(token, names[i])) return true;
+  return false;
 }
 
 static bool reserved_colon(const struct Token *token) {
@@ -3218,7 +3237,6 @@ static bool command_start(const struct Token *token) {
 
 static bool simple_command_start(const struct Token *token) {
   return (token->kind == WORD || redirect_kind(token->kind)) &&
-    !compound_start(token) &&
     !stop(token) &&
     !spelling(token, "!") &&
     !reserved_colon(token);
@@ -3227,6 +3245,10 @@ static bool simple_command_start(const struct Token *token) {
 static bool stop_or_end(struct Parser *parser, uint32_t stops) {
   const struct Token *token = look(parser);
   return token->kind == END || (stop(token) & (stops | parser->stops));
+}
+
+static bool command_boundary(struct Parser *parser) {
+  return list_boundary(look(parser)->kind) || stop_or_end(parser, 0);
 }
 
 // Decode faults precede word faults and are sorted by start.
@@ -3365,9 +3387,7 @@ static struct Recovery recover(struct Parser *parser, unsigned boundaries) {
 static void invalid_target(struct Parser *parser, enum Lexeme kind) {
   bool here = kind == HERE || kind == HERE_STRIP;
   const struct Token *target = look(parser);
-  bool missing = list_boundary(target->kind) ||
-    redirect_kind(target->kind) ||
-    stop_or_end(parser, 0);
+  bool missing = redirect_kind(target->kind) || command_boundary(parser);
   struct Fault fault = token_fault(
     parser,
     missing,
@@ -3740,9 +3760,17 @@ static void unexpected(struct Parser *parser) {
   report(parser, fault, recovery);
 }
 
-static void function_definition(struct Parser *parser) {
+static void function_definition(struct Parser *parser, bool special_builtin) {
   if (parser->owner && !parser->opaque)
     parser->plan->owners[parser->owner].kind = BEGIN_FUNCTION_DEFINITION;
+  if (special_builtin)
+    issue(
+      parser,
+      SPECIAL_BUILTIN_FUNCTION_NAME,
+      parser->consumed_start,
+      parser->consumed,
+      (struct Recovery){parser->consumed, true}
+    );
   take(parser);
   bool damaged = false;
   if (look(parser)->kind != RIGHT && !stop_or_end(parser, 0)) {
@@ -3764,7 +3792,7 @@ static void function_definition(struct Parser *parser) {
     compound(parser);
     return;
   }
-  bool missing = list_boundary(look(parser)->kind) || stop_or_end(parser, 0);
+  bool missing = command_boundary(parser);
   struct Fault fault = token_fault(
     parser,
     missing,
@@ -3774,20 +3802,13 @@ static void function_definition(struct Parser *parser) {
   report(parser, fault, recover(parser, RECOVER_CONNECTORS));
 }
 
-static void command_contents(struct Parser *parser, bool simple) {
-  if (compound_start(look(parser))) {
-    compound(parser);
-    return;
-  }
-  if (!simple) {
-    unexpected(parser);
-    return;
-  }
+static void simple_command(struct Parser *parser) {
   if (look(parser)->kind == WORD) {
     bool name = look(parser)->name;
+    bool special_builtin = name && special_builtin_name(look(parser));
     take(parser);
     if (name && look(parser)->kind == LEFT) {
-      function_definition(parser);
+      function_definition(parser, special_builtin);
       return;
     }
   } else redirect(parser);
@@ -3799,15 +3820,13 @@ static void command_contents(struct Parser *parser, bool simple) {
 
 static void command(struct Parser *parser) {
   const struct Token *token = look(parser);
-  bool simple = simple_command_start(token);
-  size_t owner =
-    simple ? owner_begin(parser, BEGIN_SIMPLE_COMMAND, token->start) : 0;
-  command_contents(parser, simple);
-  owner_end(parser, owner, parser->consumed);
-}
-
-static bool command_boundary(struct Parser *parser) {
-  return list_boundary(look(parser)->kind) || stop_or_end(parser, 0);
+  if (compound_start(token)) compound(parser);
+  else if (!simple_command_start(token)) unexpected(parser);
+  else {
+    size_t owner = owner_begin(parser, BEGIN_SIMPLE_COMMAND, token->start);
+    simple_command(parser);
+    owner_end(parser, owner, parser->consumed);
+  }
 }
 
 static void missing_command(struct Parser *parser) {
@@ -3849,18 +3868,19 @@ static void pipeline_contents(struct Parser *parser) {
   }
 }
 
+static size_t command_owner(struct Parser *parser, enum TokenType kind) {
+  const struct Token *token = look(parser);
+  return command_start(token) ? owner_begin(parser, kind, token->start) : 0;
+}
+
 static void pipeline(struct Parser *parser) {
-  size_t owner = 0;
-  if (command_start(look(parser)))
-    owner = owner_begin(parser, BEGIN_PIPELINE, look(parser)->start);
+  size_t owner = command_owner(parser, BEGIN_PIPELINE);
   pipeline_contents(parser);
   owner_end(parser, owner, parser->consumed);
 }
 
 static void and_or(struct Parser *parser) {
-  size_t owner = 0;
-  if (command_start(look(parser)))
-    owner = owner_begin(parser, BEGIN_AND_OR, look(parser)->start);
+  size_t owner = command_owner(parser, BEGIN_AND_OR);
   parser->resumed = false;
   if (list_boundary(look(parser)->kind)) unexpected(parser);
   else {
@@ -3905,13 +3925,16 @@ static bool commands(
   linebreak(parser);
   while (!parser->plan->failed && !stop_or_end(parser, 0)) {
     any = true;
-    if (!owner && command_start(look(parser)))
-      owner = owner_begin(parser, list, look(parser)->start);
-    and_or(parser);
-    command_separation(parser);
-    if (stop_or_end(parser, 0)) break;
+    if (!owner) owner = command_owner(parser, list);
     enum Lexeme kind = look(parser)->kind;
-    if (kind == SEMICOLON || kind == AMPERSAND) take(parser);
+    if (kind == SEMICOLON || kind == AMPERSAND) unexpected(parser);
+    else {
+      and_or(parser);
+      command_separation(parser);
+      if (stop_or_end(parser, 0)) break;
+      kind = look(parser)->kind;
+      if (kind == SEMICOLON || kind == AMPERSAND) take(parser);
+    }
     if (look(parser)->kind == NEWLINE) {
       if (list == BEGIN_LIST) {
         owner_end(parser, owner, parser->consumed);
@@ -4189,7 +4212,7 @@ static bool later_child(const struct Plan *plan, size_t a, size_t b) {
   return a > b;
 }
 
-// Sibling starts and ends are ordered, allowing backward search to stop early.
+// Ordered sibling ranges allow early termination.
 static size_t place_unowned(
   const struct Plan *plan,
   const struct PublicChild *children,

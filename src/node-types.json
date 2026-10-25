@@ -4041,6 +4041,10 @@
             "named": true
           },
           {
+            "type": "special_builtin_function_name",
+            "named": true
+          },
+          {
             "type": "substitution_ending_gap",
             "named": true
           },
@@ -4828,6 +4832,10 @@
   },
   {
     "type": "source",
+    "named": true
+  },
+  {
+    "type": "special_builtin_function_name",
     "named": true
   },
   {
