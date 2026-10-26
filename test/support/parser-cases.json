@@ -162,48 +162,14 @@
     ]
   },
   {
-    "name": "incomplete escape has a real source range",
+    "name": "an unquoted backslash at real EOF is literal",
     "source": "echo \\",
-    "expected": [
-      {
-        "owner": {
-          "kind": "escaped_character",
-          "start": 5
-        },
-        "range": [5, 6],
-        "fault": {
-          "kind": "incomplete_escape",
-          "range": [5, 6]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [6, 6]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "missing here-document terminator reaches EOF",
+    "name": "a started here-document accepts reserved-word text through EOF",
     "source": "cat <<EOF\nfi\ndone\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 10
-        },
-        "range": [18, 18],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [18, 18]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [18, 18]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
     "name": "pipe requires a following command",
@@ -4454,17 +4420,17 @@
   },
   {
     "name": "normal here_document_delimiters: delimiter command substitutions retain quoted parentheses inside case brackets",
-    "source": "cat <<$(case x in [')']) printf END;; esac)\nbody\n$(case x in [)]) printf END;; esac)\nafter\n",
+    "source": "cat <<$(case x in [')']) printf END;; esac)\nbody\n$(case x in [')']) printf END;; esac)\nafter\n",
     "expected": []
   },
   {
     "name": "normal here_document_delimiters: delimiter command substitutions retain parentheses inside functions",
-    "source": "cat <<$(f() { printf ')'; }; f)\nbody\n$(f() { printf ); }; f)\nafter\n",
+    "source": "cat <<$(f() { printf ')'; }; f)\nbody\n$(f() { printf ')'; }; f)\nafter\n",
     "expected": []
   },
   {
-    "name": "normal here_document_delimiters: single quotes in a double-quoted substitution remain literal",
-    "source": "cat <<\"$(printf '\"')\"\nbody\n$(printf '\"')\n",
+    "name": "normal here_document_delimiters: quote removal traverses the complete substitution spelling",
+    "source": "cat <<\"$(printf '\"')\"\nbody\n$(printf ')\"\n",
     "expected": []
   },
   {
@@ -4538,8 +4504,8 @@
     "expected": []
   },
   {
-    "name": "normal here_document_delimiters: arithmetic here-document delimiters retain parameter value quoting and remove pattern quoting",
-    "source": ": <<\"$((1+${x:-'2'}))\" <<$((1+${x:-a\\qb})) <<$((1+${x#'2'}))\n$quoted\n$((1+${x:-'2'}))\n$unquoted\n$((1+${x:-a\\qb}))\n$pattern\n$((1+${x#2}))\n: after\n",
+    "name": "normal here_document_delimiters: arithmetic delimiters preserve nested quotes and escapes",
+    "source": ": <<\"$((1+${x:-'2'}))\" <<$((1+${x:-a\\qb})) <<$((1+${x#'2'}))\n$quoted\n$((1+${x:-'2'}))\n$unquoted\n$((1+${x:-a\\qb}))\n$pattern\n$((1+${x#'2'}))\n: after\n",
     "expected": []
   },
   {
@@ -4896,26 +4862,9 @@
     "expected": []
   },
   {
-    "name": "an empty delimiter requires a real terminating line",
+    "name": "an empty delimiter accepts EOF after the starting newline",
     "source": "cat <<''\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 9
-        },
-        "range": [9, 9],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [9, 9]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [9, 9]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
     "name": "octal delimiter bytes match UTF-8 source",
@@ -4928,119 +4877,29 @@
     "expected": []
   },
   {
-    "name": "a hexadecimal non-UTF-8 delimiter value leaves only an ending gap",
+    "name": "a hexadecimal non-UTF-8 delimiter keeps unmatched lines in the body through EOF",
     "source": "cat <<$'\\xFF'\nbody\nÿ\ncat >\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 14,
-          "end": 28
-        },
-        "range": [28, 28],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [28, 28]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [28, 28]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "an octal non-UTF-8 delimiter value leaves only an ending gap",
+    "name": "an octal non-UTF-8 delimiter keeps unmatched lines in the body through EOF",
     "source": "cat <<$'\\377'\nbody\nÿ\ncat >\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 14,
-          "end": 28
-        },
-        "range": [28, 28],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [28, 28]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [28, 28]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "an incomplete UTF-8 delimiter value leaves only an ending gap",
+    "name": "an incomplete UTF-8 delimiter keeps unmatched lines in the body through EOF",
     "source": "cat <<$'\\xC3'\nbody\nÿ\ncat >\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 14,
-          "end": 28
-        },
-        "range": [28, 28],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [28, 28]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [28, 28]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
     "name": "a non-UTF-8 delimiter value is neither deleted nor replaced during matching",
     "source": "cat <<a$'\\xFF'b\nab\na�b\ncat >\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 16,
-          "end": 31
-        },
-        "range": [31, 31],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [31, 31]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [31, 31]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
     "name": "an overlong UTF-8 delimiter value does not match its decoded character",
     "source": "cat <<$'\\xC0\\xAF'\n/\ncat >\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 18,
-          "end": 26
-        },
-        "range": [26, 26],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [26, 26]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [26, 26]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
     "name": "delimiter bytes joined across quotes expose the following command fault",
@@ -5142,26 +5001,9 @@
     ]
   },
   {
-    "name": "quoted body missing terminator reaches EOF",
+    "name": "a quoted here-document accepts all remaining body text through EOF",
     "source": "cat <<'EOF'\nfi\ndone\necho ok\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 12
-        },
-        "range": [28, 28],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [28, 28]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [28, 28]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
     "name": "unfinished quote in delimiter stays the first fault",
@@ -5287,22 +5129,6 @@
           "range": [15, 15]
         },
         "fragments": [[13, 15]]
-      },
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 18
-        },
-        "range": [34, 34],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [34, 34]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [34, 34]
-        },
-        "fragments": []
       }
     ]
   },
@@ -5503,275 +5329,78 @@
     "expected": []
   },
   {
-    "name": "an empty delimiter still requires a complete final body line",
+    "name": "an empty delimiter accepts a final body line without a newline",
     "source": "cat <<''\nbody",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 9
-        },
-        "range": [13, 13],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [13, 13]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [13, 13]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "an empty delimiter cannot close a body before its starting newline",
+    "name": "an empty delimiter accepts EOF without inventing a body",
     "source": "cat <<''",
-    "expected": [
-      {
-        "owner": null,
-        "range": [8, 8],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [8, 8]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [8, 8]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "a trailing line continuation does not start an empty-delimiter body",
+    "name": "a trailing line continuation accepts EOF without starting an empty-delimiter body",
     "source": "cat <<'' a\\\n",
-    "expected": [
-      {
-        "owner": null,
-        "range": [12, 12],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [12, 12]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [12, 12]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "EOF cannot terminate two pending empty delimiters",
+    "name": "EOF ends both started empty-delimiter documents",
     "source": "cat <<'' <<''\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 14
-        },
-        "range": [14, 14],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [14, 14]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [14, 14]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "one real empty line leaves the second document unterminated",
+    "name": "EOF ends the second document after one real empty terminator",
     "source": "cat <<'' <<''\n\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 15
-        },
-        "range": [15, 15],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [15, 15]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [15, 15]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "one real empty line leaves two documents pending at EOF",
+    "name": "EOF ends queued documents after one real empty terminator",
     "source": "cat <<'' <<'' <<''\n\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 20
-        },
-        "range": [20, 20],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [20, 20]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [20, 20]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "an unterminated named delimiter leaves the first document open",
+    "name": "EOF ends the first body and its queued empty-delimiter body",
     "source": "cat <<A <<''\nA",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 13
-        },
-        "range": [14, 14],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [14, 14]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [14, 14]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "a named terminator newline does not terminate the next empty document",
+    "name": "EOF ends an empty-delimiter body after a named terminator",
     "source": "cat <<A <<''\nA\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 15
-        },
-        "range": [15, 15],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [15, 15]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [15, 15]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "an empty tab-stripped terminator requires a newline",
+    "name": "an empty tab-stripped body accepts tabs before EOF",
     "source": "cat <<-''\n\t",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 10
-        },
-        "range": [11, 11],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [11, 11]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [11, 11]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "an unstripped tab at EOF cannot match an empty delimiter",
+    "name": "an unstripped tab before EOF remains body content",
     "source": "cat <<''\n\t",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 9
-        },
-        "range": [10, 10],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [10, 10]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [10, 10]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "a newline-terminated body still requires an empty terminator line",
+    "name": "an empty delimiter accepts a newline-terminated body at EOF",
     "source": "cat <<''\nbody\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 9
-        },
-        "range": [14, 14],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [14, 14]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [14, 14]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "a nonempty delimiter requires a terminating newline",
+    "name": "a nonempty delimiter directly before source EOF terminates its body",
     "source": "cat <<END\nbody\nEND",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 10
-        },
-        "range": [18, 18],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [18, 18]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [18, 18]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "the empty-delimiter rule also applies inside command substitution",
+    "name": "EOF accepts the body but leaves its command substitution incomplete",
     "source": "echo $(cat <<''\nbody",
     "expected": [
       {
         "owner": {
-          "kind": "here_document_body",
-          "start": 16
+          "kind": "command_substitution",
+          "start": 5,
+          "end": 20
         },
         "range": [20, 20],
         "fault": {
-          "kind": "here_document_ending_gap",
+          "kind": "substitution_ending_gap",
           "range": [20, 20]
         },
         "boundary": {
@@ -6095,19 +5724,20 @@
     ]
   },
   {
-    "name": "real EOF inside a backquote here-document remains a missing terminator",
+    "name": "real EOF accepts the body but leaves its backquote substitution incomplete",
     "source": "echo `cat <<EOF\nbody",
     "expected": [
       {
         "owner": {
-          "kind": "here_document_body",
-          "start": 16
-        },
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [20, 20]
+          "kind": "backquote_substitution",
+          "start": 5,
+          "end": 20
         },
         "range": [20, 20],
+        "fault": {
+          "kind": "backquote_gap",
+          "range": [20, 20]
+        },
         "boundary": {
           "kind": "recovery_eof",
           "range": [20, 20]
@@ -6500,26 +6130,9 @@
     ]
   },
   {
-    "name": "reject here_document_delimiters: a double-quoted delimiter newline keeps the captured document",
+    "name": "a double-quoted delimiter newline keeps the captured document through EOF",
     "source": "cat <<\"B\nC\"\nbody\necho after\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 12
-        },
-        "range": [28, 28],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [28, 28]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [28, 28]
-        },
-        "fragments": []
-      }
-    ]
+    "expected": []
   },
   {
     "name": "reject here_document_delimiters: a rejected operator on the same line does not block a later here-document",
@@ -11704,18 +11317,19 @@
     ]
   },
   {
-    "name": "an incomplete escape in a default word takes precedence over its closer",
+    "name": "a literal EOF backslash leaves a default-word parameter incomplete",
     "source": "echo ${x:-word\\",
     "expected": [
       {
         "owner": {
-          "kind": "escaped_character",
-          "start": 14
+          "kind": "parameter_expansion",
+          "start": 5,
+          "end": 15
         },
-        "range": [14, 15],
+        "range": [15, 15],
         "fault": {
-          "kind": "incomplete_escape",
-          "range": [14, 15]
+          "kind": "parameter_ending_gap",
+          "range": [15, 15]
         },
         "boundary": {
           "kind": "recovery_eof",
@@ -11726,18 +11340,19 @@
     ]
   },
   {
-    "name": "an incomplete escape in a pattern word takes precedence over its closer",
+    "name": "a literal EOF backslash leaves a pattern parameter incomplete",
     "source": "echo ${x%word\\",
     "expected": [
       {
         "owner": {
-          "kind": "escaped_character",
-          "start": 13
+          "kind": "parameter_expansion",
+          "start": 5,
+          "end": 14
         },
-        "range": [13, 14],
+        "range": [14, 14],
         "fault": {
-          "kind": "incomplete_escape",
-          "range": [13, 14]
+          "kind": "parameter_ending_gap",
+          "range": [14, 14]
         },
         "boundary": {
           "kind": "recovery_eof",
@@ -11748,18 +11363,19 @@
     ]
   },
   {
-    "name": "a double-quoted expansion still gives its pattern an unquoted escape context",
+    "name": "a literal EOF backslash leaves a quoted pattern parameter incomplete",
     "source": "echo \"${x%word\\",
     "expected": [
       {
         "owner": {
-          "kind": "escaped_character",
-          "start": 14
+          "kind": "parameter_expansion",
+          "start": 6,
+          "end": 15
         },
-        "range": [14, 15],
+        "range": [15, 15],
         "fault": {
-          "kind": "incomplete_escape",
-          "range": [14, 15]
+          "kind": "parameter_ending_gap",
+          "range": [15, 15]
         },
         "boundary": {
           "kind": "recovery_eof",
@@ -12764,19 +12380,6 @@
           "range": [8, 8]
         },
         "fragments": [[6, 8]]
-      },
-      {
-        "owner": null,
-        "range": [8, 8],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [8, 8]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [8, 8]
-        },
-        "fragments": []
       }
     ]
   },
@@ -12799,24 +12402,11 @@
           "range": [19, 19]
         },
         "fragments": [[13, 19]]
-      },
-      {
-        "owner": null,
-        "range": [19, 19],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [19, 19]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [19, 19]
-        },
-        "fragments": []
       }
     ]
   },
   {
-    "name": "an empty pending delimiter keeps its independent gap after a cut quote",
+    "name": "an empty pending delimiter accepts EOF while preserving the saved-token newline fault",
     "source": "<<'';\"\"\"\n\\\n",
     "expected": [
       {
@@ -12834,19 +12424,6 @@
           "range": [11, 11]
         },
         "fragments": [[9, 11]]
-      },
-      {
-        "owner": null,
-        "range": [11, 11],
-        "fault": {
-          "kind": "here_document_ending_gap",
-          "range": [11, 11]
-        },
-        "boundary": {
-          "kind": "recovery_eof",
-          "range": [11, 11]
-        },
-        "fragments": []
       }
     ]
   },
@@ -13019,44 +12596,53 @@
     ]
   },
   {
-    "name": "a trailing unquoted backslash has its own lexical owner",
+    "name": "an unquoted backslash after word text is literal at EOF",
     "source": "echo x\\",
-    "expected": [
-      {
-        "owner": {
-          "kind": "escaped_character",
-          "start": 6,
-          "end": 7
-        },
-        "range": [6, 7]
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "a trailing parameter-word escape keeps the word and expansion ancestors",
+    "name": "a parameter word ending in a literal backslash retains its missing closer",
     "source": "echo ${x:-a\\",
     "expected": [
       {
         "owner": {
-          "kind": "escaped_character",
-          "start": 11,
+          "kind": "parameter_expansion",
+          "start": 5,
           "end": 12
         },
-        "range": [11, 12]
+        "range": [12, 12],
+        "fault": {
+          "kind": "parameter_ending_gap",
+          "range": [12, 12]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [12, 12]
+        },
+        "fragments": []
       }
     ]
   },
   {
-    "name": "a pattern word uses unquoted escape ownership inside a double quote",
+    "name": "a quoted parameter pattern ending in a backslash retains its missing closer",
     "source": "echo \"${x%a\\",
     "expected": [
       {
         "owner": {
-          "kind": "escaped_character",
-          "start": 11,
+          "kind": "parameter_expansion",
+          "start": 6,
           "end": 12
         },
-        "range": [11, 12]
+        "range": [12, 12],
+        "fault": {
+          "kind": "parameter_ending_gap",
+          "range": [12, 12]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [12, 12]
+        },
+        "fragments": []
       }
     ]
   },
@@ -13485,56 +13071,24 @@
     ]
   },
   {
-    "name": "an unterminated here-document starts at its first body line",
+    "name": "a started here-document accepts body text through EOF",
     "source": "cat <<EOF\nbody\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 10,
-          "end": 15
-        },
-        "range": [15, 15]
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "a here-document without an initiating newline has no invented body owner",
+    "name": "a here-document accepts EOF without an initiating newline or invented body owner",
     "source": "cat <<EOF",
-    "expected": [
-      {
-        "owner": null,
-        "range": [9, 9]
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "an initiated empty here-document has a zero-width body owner",
+    "name": "an initiated empty here-document accepts EOF",
     "source": "cat <<EOF\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 10,
-          "end": 10
-        },
-        "range": [10, 10]
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "a quoted body suppresses expansion parsing but owns its missing terminator",
+    "name": "a quoted body suppresses expansion parsing through EOF",
     "source": "cat <<'EOF'\n$%\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 12,
-          "end": 15
-        },
-        "range": [15, 15]
-      }
-    ]
+    "expected": []
   },
   {
     "name": "a here-document body retains its real terminator after recovery",
@@ -13616,32 +13170,14 @@
     ]
   },
   {
-    "name": "a missing terminator newline keeps the first here-document body open",
+    "name": "EOF ends queued named bodies without a final newline",
     "source": "cat <<A <<B\nA",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 12,
-          "end": 13
-        },
-        "range": [13, 13]
-      }
-    ]
+    "expected": []
   },
   {
-    "name": "a real terminator newline starts the following empty body",
+    "name": "EOF ends a queued named body after a real terminator",
     "source": "cat <<A <<B\nA\n",
-    "expected": [
-      {
-        "owner": {
-          "kind": "here_document_body",
-          "start": 14,
-          "end": 14
-        },
-        "range": [14, 14]
-      }
-    ]
+    "expected": []
   },
   {
     "name": "an outer parameter fault ends the preceding word prefix without losing its issue",
@@ -14597,10 +14133,20 @@
     "source": "for x + <<do",
     "expected": [
       {
-        "owner": { "kind": "for_clause", "start": 0, "end": 12 },
+        "owner": {
+          "kind": "for_clause",
+          "start": 0,
+          "end": 12
+        },
         "range": [6, 12],
-        "fault": { "kind": "invalid_for_header", "range": [6, 7] },
-        "boundary": { "kind": "recovery_eof", "range": [12, 12] },
+        "fault": {
+          "kind": "invalid_for_header",
+          "range": [6, 7]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [12, 12]
+        },
         "fragments": [[7, 12]]
       }
     ]
@@ -14610,10 +14156,20 @@
     "source": "for x + <<do\n${x:bad}\ndone\n",
     "expected": [
       {
-        "owner": { "kind": "for_clause", "start": 0, "end": 27 },
+        "owner": {
+          "kind": "for_clause",
+          "start": 0,
+          "end": 27
+        },
         "range": [6, 27],
-        "fault": { "kind": "invalid_for_header", "range": [6, 7] },
-        "boundary": { "kind": "recovery_eof", "range": [27, 27] },
+        "fault": {
+          "kind": "invalid_for_header",
+          "range": [6, 7]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [27, 27]
+        },
         "fragments": [[7, 27]]
       }
     ]
@@ -14623,10 +14179,20 @@
     "source": "for x + { :;",
     "expected": [
       {
-        "owner": { "kind": "for_clause", "start": 0, "end": 12 },
+        "owner": {
+          "kind": "for_clause",
+          "start": 0,
+          "end": 12
+        },
         "range": [6, 12],
-        "fault": { "kind": "invalid_for_header", "range": [6, 7] },
-        "boundary": { "kind": "recovery_eof", "range": [12, 12] },
+        "fault": {
+          "kind": "invalid_for_header",
+          "range": [6, 7]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [12, 12]
+        },
         "fragments": [[7, 12]]
       }
     ]
@@ -14636,10 +14202,20 @@
     "source": "for x + for y; do :;",
     "expected": [
       {
-        "owner": { "kind": "for_clause", "start": 0, "end": 20 },
+        "owner": {
+          "kind": "for_clause",
+          "start": 0,
+          "end": 20
+        },
         "range": [6, 20],
-        "fault": { "kind": "invalid_for_header", "range": [6, 7] },
-        "boundary": { "kind": "recovery_eof", "range": [20, 20] },
+        "fault": {
+          "kind": "invalid_for_header",
+          "range": [6, 7]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [20, 20]
+        },
         "fragments": [[7, 20]]
       }
     ]
@@ -14649,11 +14225,700 @@
     "source": "for x + if :; then :;",
     "expected": [
       {
-        "owner": { "kind": "for_clause", "start": 0, "end": 21 },
+        "owner": {
+          "kind": "for_clause",
+          "start": 0,
+          "end": 21
+        },
         "range": [6, 21],
-        "fault": { "kind": "invalid_for_header", "range": [6, 7] },
-        "boundary": { "kind": "recovery_eof", "range": [21, 21] },
+        "fault": {
+          "kind": "invalid_for_header",
+          "range": [6, 7]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [21, 21]
+        },
         "fragments": [[7, 21]]
+      }
+    ]
+  },
+  {
+    "name": "delimiter quote removal and recovery: unquoted command single quotes",
+    "source": "cat <<$(printf 'ab')\n${x:bad}\n$(printf 'ab')\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 21,
+          "end": 29
+        },
+        "range": [25, 28],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [25, 26]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [28, 28]
+        },
+        "fragments": [[26, 28]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 49,
+          "end": 50
+        },
+        "range": [50, 50],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [50, 50]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [50, 50]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter quote removal and recovery: unquoted parameter quotes",
+    "source": "cat <<${x:-'ab'}\n${x:bad}\n${x:-'ab'}\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 17,
+          "end": 25
+        },
+        "range": [21, 24],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [21, 22]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [24, 24]
+        },
+        "fragments": [[22, 24]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 41,
+          "end": 42
+        },
+        "range": [42, 42],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [42, 42]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [42, 42]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter quote removal and recovery: unquoted pattern quotes",
+    "source": "cat <<${x#'ab'}\n${x:bad}\n${x#'ab'}\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 16,
+          "end": 24
+        },
+        "range": [20, 23],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [20, 21]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [23, 23]
+        },
+        "fragments": [[21, 23]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 39,
+          "end": 40
+        },
+        "range": [40, 40],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [40, 40]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [40, 40]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter quote removal and recovery: unquoted command escapes",
+    "source": "cat <<$(printf a\\qb)\n${x:bad}\n$(printf a\\qb)\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 21,
+          "end": 29
+        },
+        "range": [25, 28],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [25, 26]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [28, 28]
+        },
+        "fragments": [[26, 28]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 49,
+          "end": 50
+        },
+        "range": [50, 50],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [50, 50]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [50, 50]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter quote removal and recovery: a quoted suffix after a command",
+    "source": "cat <<$(printf 'ab')\"tail\"\n${x:bad}\n$(printf ab)tail\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 57,
+          "end": 58
+        },
+        "range": [58, 58],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [58, 58]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [58, 58]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter quote removal and recovery: a quoted nested parameter command",
+    "source": "cat <<\"${x:-\"$(printf 'ab')\"}\"\n${x:bad}\n${x:-$(printf ab)}\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 63,
+          "end": 64
+        },
+        "range": [64, 64],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [64, 64]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [64, 64]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter quote removal and recovery: an escaped parameter brace",
+    "source": "cat <<\"${x:-a\\}b}\"\n${x:bad}\n${x:-a\\}b}\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 43,
+          "end": 44
+        },
+        "range": [44, 44],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [44, 44]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [44, 44]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter quote removal and recovery: an unquoted dollar quote in a command",
+    "source": "cat <<$(printf $'a\\x62')\n${x:bad}\n$(printf 'ab')\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 25,
+          "end": 33
+        },
+        "range": [29, 32],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [29, 30]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [32, 32]
+        },
+        "fragments": [[30, 32]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 53,
+          "end": 54
+        },
+        "range": [54, 54],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [54, 54]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [54, 54]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter quote removal and recovery: an encoded apostrophe in a command",
+    "source": "cat <<$(printf $'a\\'b')\n${x:bad}\n$(printf 'a'\\''b')\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 24,
+          "end": 32
+        },
+        "range": [28, 31],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [28, 29]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [31, 31]
+        },
+        "fragments": [[29, 31]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 56,
+          "end": 57
+        },
+        "range": [57, 57],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [57, 57]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [57, 57]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter quote removal and recovery: a dollar quote in a double-quoted command",
+    "source": "cat <<\"$(printf $'a\\x62')\"\n${x:bad}\n$(printf 'ab')\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 55,
+          "end": 56
+        },
+        "range": [56, 56],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [56, 56]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [56, 56]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter quote removal and recovery: an unquoted backquote",
+    "source": "cat <<`printf 'ab'`\n${x:bad}\n`printf 'ab'`\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 20,
+          "end": 28
+        },
+        "range": [24, 27],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [24, 25]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [27, 27]
+        },
+        "fragments": [[25, 27]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 47,
+          "end": 48
+        },
+        "range": [48, 48],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [48, 48]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [48, 48]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter quote removal and recovery: raw backquote escapes",
+    "source": "cat <<`printf \\`x\\`#tag END`\n${x:bad}\n`printf \\`x\\`#tag END`\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 29,
+          "end": 37
+        },
+        "range": [33, 36],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [33, 34]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [36, 36]
+        },
+        "fragments": [[34, 36]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 65,
+          "end": 66
+        },
+        "range": [66, 66],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [66, 66]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [66, 66]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter quote removal and recovery: escaped double quotes in a backquote",
+    "source": "cat <<\"`printf \\\"ab\\\"`\"\n${x:bad}\n`printf \"ab\"`\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 51,
+          "end": 52
+        },
+        "range": [52, 52],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [52, 52]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [52, 52]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter quote removal and recovery: a dollar quote in a backquote",
+    "source": "cat <<\"`printf $'ab'`\"\n${x:bad}\n`printf $'ab'`\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 51,
+          "end": 52
+        },
+        "range": [52, 52],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [52, 52]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [52, 52]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter quote removal and recovery: a double quote inside syntax single quotes",
+    "source": "cat <<\"$(printf '\"')\"\n${x:bad}\n$(printf ')\"\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 48,
+          "end": 49
+        },
+        "range": [49, 49],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [49, 49]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [49, 49]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter quote removal and recovery: an unquoted arithmetic parameter",
+    "source": "cat <<$((1+${x:-'2'}))\n${x:bad}\n$((1+${x:-'2'}))\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 23,
+          "end": 31
+        },
+        "range": [27, 30],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [27, 28]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [30, 30]
+        },
+        "fragments": [[28, 30]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 53,
+          "end": 54
+        },
+        "range": [54, 54],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [54, 54]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [54, 54]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter quote removal and recovery: arithmetic fallback before a quoted suffix",
+    "source": "cat <<$((printf 'ab'); :)\"tail\"\n${x:bad}\n$((printf ab); :)tail\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 67,
+          "end": 68
+        },
+        "range": [68, 68],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [68, 68]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [68, 68]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "zero-only parameter names remain accepted in value, length and pattern forms",
+    "source": "echo ${000} ${#000} ${000:-value} ${000#pattern}\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 53,
+          "end": 54
+        },
+        "range": [54, 54],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [54, 54]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [54, 54]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "dash pattern range decisions do not suppress the next command fault",
+    "source": "echo [a-c-e] [[:alpha:]-z] [a-[:digit:]] [a-[.z.]] ${x#[a-c-e]}\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 68,
+          "end": 69
+        },
+        "range": [69, 69],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [69, 69]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [69, 69]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "queued declarations accept EOF before any body starts",
+    "source": "cat <<A <<'' <<-B",
+    "expected": []
+  },
+  {
+    "name": "queued declarations accept EOF during their first body",
+    "source": "cat <<A <<B\nbody",
+    "expected": []
+  },
+  {
+    "name": "a final delimiter without a newline leaves later declarations accepted at EOF",
+    "source": "cat <<A <<B\nA",
+    "expected": []
+  },
+  {
+    "name": "the last queued delimiter can end directly at EOF",
+    "source": "cat <<A <<B\nA\nB",
+    "expected": []
+  },
+  {
+    "name": "a terminator at EOF bounds an independently unfinished body expansion",
+    "source": "cat <<E\n${x:-body\nE",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 8,
+          "end": 18
+        },
+        "range": [18, 18],
+        "fault": {
+          "kind": "parameter_ending_gap",
+          "range": [18, 18]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [18, 18]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "an outer terminator bounds an unfinished inner here-document",
+    "source": "cat <<OUT\n$(cat <<IN\nbody\nOUT\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "here_document_body",
+          "start": 21,
+          "end": 26
+        },
+        "range": [26, 26],
+        "fault": {
+          "kind": "here_document_ending_gap",
+          "range": [26, 26]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [26, 26]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "an outer terminator at source EOF is not EOF for its inner here-document",
+    "source": "cat <<OUT\n$(cat <<IN\nbody\nOUT",
+    "expected": [
+      {
+        "owner": {
+          "kind": "here_document_body",
+          "start": 21,
+          "end": 26
+        },
+        "range": [26, 26],
+        "fault": {
+          "kind": "here_document_ending_gap",
+          "range": [26, 26]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [26, 26]
+        },
+        "fragments": []
       }
     ]
   }

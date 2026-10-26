@@ -587,6 +587,8 @@ static void test_allocation_failures(void) {
     "echo $'\\c@' $'\\c\\q'\n",
     "cat <<EOF \"a\nb\"\nbody\nEOF\n",
     "cat <<$'\\q'\nbody\nq\n",
+    "cat <<$(printf $'a\\'b')\"tail\"\n${x:bad}\n$(printf a'b)tail\ncat >\n",
+    "cat <<\"`printf \\\"ab\\\"`\"\nbody\n`printf \"ab\"`\ncat >\n",
     "echo `cat <<A <<$'\\q' <<F\nA\nq\nF\n`",
     "echo $'\\x123' ${x:@}\n",
     "echo $((1 + $x *",
@@ -735,7 +737,74 @@ static void test_deep_else_chain(void) {
   free(source);
 }
 
+static void test_delimiter_spelling_and_body_quoting(void) {
+  const struct {
+    const char *word;
+    const char *delimiter;
+    bool quoted;
+  } cases[] = {
+    {"'END'", "END", true},
+    {"E\\ND", "END", true},
+    {"END\\", "END\\", false},
+    {"$'a\\x62'", "ab", true},
+    {"$'a\\'b'", "a'b", true},
+    {"$'a\\047b'", "a'b", true},
+    {"${x:-'ab'}", "${x:-'ab'}", false},
+    {"${x#'ab'}", "${x#'ab'}", false},
+    {"\"${x:-\"ab\"}\"", "${x:-ab}", true},
+    {"\"${x:-a\\}b}\"", "${x:-a\\}b}", true},
+    {"$(printf 'ab')", "$(printf 'ab')", false},
+    {"$(printf a\\qb)", "$(printf a\\qb)", false},
+    {"$(printf 'ab')\"tail\"", "$(printf ab)tail", true},
+    {"$(printf $'a\\x62')", "$(printf 'ab')", false},
+    {"$(printf $'a\\'b')", "$(printf 'a'\\''b')", false},
+    {"\"$(printf $'a\\x62')\"", "$(printf 'ab')", true},
+    {"\"$(printf 'ab')\"", "$(printf 'ab')", true},
+    {"\"$(printf \"ab\")\"", "$(printf ab)", true},
+    {"\"$(printf '\"')\"", "$(printf ')\"", true},
+    {"\"${x:-\"$(printf 'ab')\"}\"", "${x:-$(printf ab)}", true},
+    {"\"$(printf 'a')\"$(printf 'b')", "$(printf 'a')$(printf b)", true},
+    {"`printf 'ab'`", "`printf 'ab'`", false},
+    {"`printf \\`x\\`#tag END`", "`printf \\`x\\`#tag END`", false},
+    {"\"`printf \\\"ab\\\"`\"", "`printf \"ab\"`", true},
+    {"\"`printf $'ab'`\"", "`printf $'ab'`", true},
+    {"`printf a\\\nb`", "`printf ab`", false},
+    {"$((1+${x:-'2'}))", "$((1+${x:-'2'}))", false},
+    {"\"$((1+$(printf '2')))\"", "$((1+$(printf '2')))", true},
+    {"$((printf 'ab'); :)\"tail\"", "$((printf ab); :)tail", true},
+  };
+  for (size_t i = 0; i < ARRAY_LENGTH(cases); i++) {
+    struct MockLexer mock = mock_input(cases[i].word);
+    struct Text source = {0};
+    assert(read_source(&mock.lexer, &source));
+    struct Plan plan = {.source_end = source.count};
+    struct Rejected rejected = {0};
+    struct Parser parser = {
+      .input = {source.units, source.count, 0, source.count, NULL, &rejected},
+      .plan = &plan,
+    };
+    owner_begin(&parser, START, 0);
+    assert(redirect_operand(&parser, HERE));
+    assert(!plan.failed && !plan.issue_count);
+    assert(parser.document_count == 1);
+    const struct Document *here = &parser.documents[0];
+    assert(here->quoted == cases[i].quoted);
+    assert(here->delimiter.count == strlen(cases[i].delimiter));
+    for (size_t j = 0; j < here->delimiter.count; j++)
+      assert(
+        here->delimiter.units[j].value == (unsigned char)cases[i].delimiter[j]
+      );
+    clear_parser(&parser);
+    ts_free(rejected.bits);
+    ts_free(plan.owners);
+    ts_free(plan.issues);
+    ts_free(plan.extensions);
+    ts_free(source.units);
+  }
+}
+
 int main(void) {
+  test_delimiter_spelling_and_body_quoting();
   test_parameter_issue_events();
   test_empty_source();
   test_normal_here_documents();

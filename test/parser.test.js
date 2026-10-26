@@ -86,15 +86,15 @@ for (const [name, word, expected] of [
 
 for (const [context, prefix, fault] of [
   ["double quotes", 'echo "', "double_quote_gap"],
-  ["a here-document body", "cat <<EOF\n", "here_document_ending_gap"],
+  ["a here-document body", "cat <<EOF\n", null],
 ]) {
   for (const tail of ["", "\\"]) {
-    test(`a backslash at EOF in ${context} leaves only the enclosing ending missing: tail ${JSON.stringify(tail)}`, () => {
+    test(`EOF in ${context} retains only independently missing closers: tail ${JSON.stringify(tail)}`, () => {
       const source = prefix + tail;
       const end = Buffer.byteLength(source);
       assert.deepEqual(
         parse(source).issues.map(({ fault }) => fault),
-        [{ kind: fault, range: [end, end] }],
+        fault ? [{ kind: fault, range: [end, end] }] : [],
       );
     });
   }
@@ -235,8 +235,8 @@ for (const [name, word, rejected, delimiter] of [
   [
     "quoted parameter command",
     `"\${x:-"$(printf 'ab')"}"`,
-    `\${x:-$(printf ab)}`,
     `\${x:-$(printf 'ab')}`,
+    `\${x:-$(printf ab)}`,
   ],
   ["prefix pattern", `"\${x#'ab'}"`, `\${x#ab}`, `\${x#'ab'}`],
   ["long prefix pattern", `"\${x##'ab'}"`, `\${x##ab}`, `\${x##'ab'}`],
@@ -280,8 +280,6 @@ for (const [name, word, rejected, delimiter] of [
     "pre$(printf ab)post",
     "pre$(printf 'ab')post",
   ],
-  ["unquoted pattern", `\${x#'ab'}`, `\${x#'ab'}`, `\${x#ab}`],
-  ["unquoted command", "$(printf 'ab')", "$(printf 'ab')", "$(printf ab)"],
   [
     "adjacent quoted and unquoted commands",
     `"$(printf 'a')"$(printf 'b')`,
@@ -310,20 +308,8 @@ for (const [name, word, rejected, delimiter] of [
           fragments: [],
         },
       ]);
-      const incomplete = `${prefix}${indent}${rejected}\n`;
-      const end = Buffer.byteLength(incomplete);
-      assert.deepEqual(parse(incomplete).issues, [
-        {
-          owner: {
-            kind: "here_document_body",
-            range: [Buffer.byteLength(prefix), end],
-          },
-          range: [end, end],
-          fault: { kind: "here_document_ending_gap", range: [end, end] },
-          boundary: { kind: "recovery_eof", range: [end, end] },
-          fragments: [],
-        },
-      ]);
+      const incomplete = `${prefix}${indent}${rejected}\ncat >\n`;
+      assert.deepEqual(parse(incomplete).issues, []);
       assert.deepEqual(
         parse(`${incomplete}${indent}${delimiter}\n`).issues,
         [],
@@ -629,24 +615,9 @@ for (const [name, opening, outer, ending] of [
 ]) {
   for (const [body, owner, start, fault] of [
     ["cat <<E", outer, 5, ending],
-    [
-      "cat <<E <<F\nE",
-      "here_document_body",
-      opening.length + 12,
-      "here_document_ending_gap",
-    ],
-    [
-      "cat <<E <<F\nE\n",
-      "here_document_body",
-      opening.length + 14,
-      "here_document_ending_gap",
-    ],
-    [
-      "cat <<E\nbody",
-      "here_document_body",
-      opening.length + 8,
-      "here_document_ending_gap",
-    ],
+    ["cat <<E <<F\nE", outer, 5, ending],
+    ["cat <<E <<F\nE\n", outer, 5, ending],
+    ["cat <<E\nbody", outer, 5, ending],
     [
       "cat <<E\n${x",
       "parameter_expansion",
@@ -727,18 +698,18 @@ for (const context of [
     prefix: "cat <<E\n",
     lexicalOwner: "here_document_body",
     lexicalStart: 8,
-    gapOwner: "here_document_body",
-    gapStart: 8,
-    gap: "here_document_ending_gap",
+    gapOwner: null,
+    gapStart: 0,
+    gap: null,
   },
   {
     name: "a here-document body inside an unfinished substitution",
     prefix: "$(cat <<E\n",
     lexicalOwner: "here_document_body",
     lexicalStart: 10,
-    gapOwner: "here_document_body",
-    gapStart: 10,
-    gap: "here_document_ending_gap",
+    gapOwner: "command_substitution",
+    gapStart: 0,
+    gap: "substitution_ending_gap",
   },
   {
     name: "a parameter inside a here-document body",

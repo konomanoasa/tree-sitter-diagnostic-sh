@@ -146,6 +146,7 @@ struct Change {
 struct Capture {
   struct Change *changes;
   size_t count, capacity;
+  size_t depth, verbatim;
   bool quoted, failed, newlines_only;
   struct Unit newline;
   size_t uncertain;
@@ -191,6 +192,7 @@ struct Plan {
   struct Owner *owners;
   size_t owner_count, owner_capacity;
   size_t depth;
+  size_t source_end;
   bool failed;
 };
 
@@ -229,7 +231,7 @@ struct Parser {
   struct Input input;
   struct Plan *plan;
   struct Token token;
-  bool ready, opaque, quoted_delimiter;
+  bool ready, opaque;
   size_t owner, consumed, consumed_start;
   struct Document *documents;
   size_t document_count, document_capacity;
@@ -859,7 +861,6 @@ finish:
   return result;
 }
 
-// Holes invalidate the outer stack.
 static enum ArithmeticValidation
 arithmetic_check_structure(const int32_t *source, size_t length) {
   struct ArithmeticGroup {
@@ -1566,16 +1567,34 @@ static bool capturing_delimiter(const struct Input *input) {
   return false;
 }
 
-static void capture_change(
-  struct Input *input,
-  struct Unit unit,
-  int32_t value,
-  bool quoted
-) {
+static void capture_quote(struct Input *input) {
+  for (
+    struct Capture *capture = input->capture; capture; capture = capture->parent
+  )
+    if (!capture->newlines_only && !capture->depth) capture->quoted = true;
+}
+
+static void
+capture_substitution(struct Input *input, bool entering, bool verbatim) {
   for (
     struct Capture *capture = input->capture; capture; capture = capture->parent
   ) {
-    if (capture->newlines_only) continue;
+    if (entering) {
+      capture->depth++;
+      if (verbatim) capture->verbatim++;
+    } else {
+      capture->depth--;
+      if (verbatim) capture->verbatim--;
+    }
+  }
+}
+
+static void
+capture_change(struct Input *input, struct Unit unit, int32_t value) {
+  for (
+    struct Capture *capture = input->capture; capture; capture = capture->parent
+  ) {
+    if (capture->newlines_only || capture->verbatim) continue;
     struct Change *grown = diagnostic_grow(
       capture->changes,
       &capture->capacity,
@@ -1589,7 +1608,6 @@ static void capture_change(
     capture->changes = grown;
     capture->changes[capture->count++] =
       (struct Change){unit.start, unit.end, value};
-    capture->quoted |= quoted;
   }
 }
 
@@ -1629,8 +1647,7 @@ static struct Unit pop(struct Input *input) {
       (
         struct Unit
       ){0, input->units[input->position].start, input->units[position - 1].end},
-      -1,
-      false
+      -1
     );
   input->position = position;
   return read_raw(input);
@@ -1639,7 +1656,7 @@ static struct Unit pop(struct Input *input) {
 static struct Unit escaped_unit(struct Input *input, struct Unit slash) {
   struct Unit escaped = input->units[input->position++];
   escaped.start = slash.start;
-  capture_change(input, escaped, escaped.value, true);
+  capture_quote(input);
   return escaped;
 }
 
@@ -1929,7 +1946,6 @@ child_parser(const struct Parser *parent, struct Input input) {
   ){.input = input,
     .plan = parent->plan,
     .opaque = parent->opaque,
-    .quoted_delimiter = parent->quoted_delimiter,
     .owner = parent->owner,
     .backquote_end = parent->backquote_end};
 }
@@ -1976,12 +1992,9 @@ static void quoted(struct Parser *parser, struct Text *text, int32_t quote) {
     offset(input)
   );
   int32_t parent_closer = parser->closer;
-  bool quoted_delimiter = parser->quoted_delimiter;
   parser->closer = quote;
-  if (!literal && capturing_delimiter(input)) parser->quoted_delimiter = true;
-  struct Unit opening = pop(input);
-  bool preserve = literal && parser->quoted_delimiter;
-  if (!preserve) capture_change(input, opening, -1, true);
+  pop(input);
+  capture_quote(input);
   while (!parser->plan->failed) {
     int32_t c = peek_quoted(input, literal);
     if (c < 0) {
@@ -1993,8 +2006,7 @@ static void quoted(struct Parser *parser, struct Text *text, int32_t quote) {
       break;
     }
     if (c == quote) {
-      struct Unit closing = pop_quoted(input, literal);
-      if (!preserve) capture_change(input, closing, -1, true);
+      pop_quoted(input, literal);
       break;
     }
     if (!literal && (c == '$' || c == '`')) {
@@ -2007,7 +2019,6 @@ static void quoted(struct Parser *parser, struct Text *text, int32_t quote) {
       text_push(parser, text, unit);
   }
   parser->closer = parent_closer;
-  parser->quoted_delimiter = quoted_delimiter;
   owner_end(parser, owner, consumed_offset(input));
   unnest(parser);
 }
@@ -2120,10 +2131,11 @@ static void parameter_escape(
 ) {
   struct Input *input = &parser->input;
   struct Unit slash = pop(input);
+  int32_t next = raw(input, input->position);
+  if (next < 0 && input->end == parser->plan->source_end) return;
   size_t owner = double_quoted
     ? 0
     : owner_begin(parser, BEGIN_ESCAPED_CHARACTER, slash.start);
-  int32_t next = raw(input, input->position);
   if (next < 0) {
     if (!double_quoted && fault->kind == TOKEN_TYPE_COUNT)
       *fault = (struct Fault){INCOMPLETE_ESCAPE, slash.start, slash.end, owner};
@@ -2312,7 +2324,7 @@ dollar_quote_escape(struct Parser *parser, struct Unit *unit) {
     else if (c == 'c') fault = control_escape(parser, unit, &end);
     else if (!known && !undecodable(c)) fault = UNSPECIFIED_DOLLAR_QUOTE_ESCAPE;
     unit->end = input->units[input->position - 1].end;
-    capture_change(input, *unit, unit->value, true);
+    capture_change(input, *unit, unit->value);
   }
   if (undecidable_delimiter_fault(fault)) capture_uncertain(input, unit->start);
   if (!end) end = unit->end;
@@ -2322,13 +2334,12 @@ dollar_quote_escape(struct Parser *parser, struct Unit *unit) {
 
 static void dollar_quote(struct Parser *parser, struct Text *text) {
   struct Input *input = &parser->input;
-  struct Unit opening = pop(input);
-  capture_change(input, opening, -1, true);
+  pop(input);
+  capture_quote(input);
   bool closed = false;
   while (!parser->plan->failed && input->position < input->count) {
     struct Unit unit = read_raw(input);
     if (unit.value == '\'') {
-      capture_change(input, unit, -1, true);
       closed = true;
       break;
     }
@@ -2361,8 +2372,7 @@ static struct Unit backquote_next(struct BackquoteInput *reader) {
     }
     if (unit.value == '\\') {
       if (raw(input, input->position) == '\n') {
-        unit.end = input->units[input->position++].end;
-        capture_change(input, unit, -1, false);
+        input->position++;
         continue;
       }
       reader->literal_next = true;
@@ -2393,7 +2403,6 @@ static size_t backquote_body(
       if (expansion_escape(next) || (double_quoted && next == '"')) {
         decoded.start = unit.start;
         unit = decoded;
-        capture_change(input, unit, unit.value, true);
       } else {
         text_push(parser, content, unit);
         if (next >= 0) text_push(parser, content, decoded);
@@ -2412,6 +2421,8 @@ static void backquote_contents(
 ) {
   struct Input *input = &parser->input;
   struct Unit opening = pop(input);
+  size_t begin = input->position;
+  capture_substitution(input, true, true);
   struct Text content = {0};
   size_t end = input->end;
   size_t closed = backquote_body(parser, double_quoted, &content, &end);
@@ -2425,6 +2436,17 @@ static void backquote_contents(
   );
   ts_free(rejected.bits);
   ts_free(content.units);
+  capture_substitution(input, false, true);
+  if (capturing_delimiter(input)) {
+    for (size_t i = begin; i + 1 < input->position; i++) {
+      if (input->units[i].value != '\\') continue;
+      struct Unit slash = input->units[i++];
+      if (input->units[i].value == '\n') {
+        slash.end = input->units[i].end;
+        capture_change(input, slash, -1);
+      }
+    }
+  }
   text_push(parser, text, (struct Unit){-1, opening.start, offset(input)});
 }
 
@@ -2438,7 +2460,7 @@ backquote(struct Parser *parser, struct Text *text, bool double_quoted) {
   unnest(parser);
 }
 
-// Cache rejected `$((` probes to avoid exponential work during nested fallback.
+// Caching rejected `$((` probes prevents exponential fallback.
 static bool rejected_arithmetic(const struct Input *input, size_t at) {
   const uint8_t *bits = input->rejected->bits;
   return bits && (bits[at / 8] >> (at % 8)) & 1;
@@ -2511,7 +2533,7 @@ arithmetic_valid(struct Plan *plan, const struct Text *content, bool open) {
   for (size_t i = 0; i < content->count; i++)
     values[i] = content->units[i].value;
   size_t length = content->count;
-  // An EOF continuation is an unconstrained suffix, like an expansion hole.
+  // An EOF continuation acts as an expansion hole.
   if (open) values[length++] = -1;
   enum ArithmeticValidation validation = validate_arithmetic(values, length);
   ts_free(values);
@@ -2529,8 +2551,7 @@ replay_capture(struct Parser *parser, const struct Capture *capture) {
     capture_change(
       &parser->input,
       (struct Unit){0, change.start, change.end},
-      change.value,
-      capture->quoted
+      change.value
     );
   }
 }
@@ -2540,7 +2561,8 @@ static bool arithmetic(struct Parser *parser) {
   if (rejected_arithmetic(&parser->input, at)) return false;
   struct Parser probe = child_parser(parser, parser->input);
   struct Capture capture = {
-    .newlines_only = !capturing_delimiter(&parser->input)
+    .newlines_only = !capturing_delimiter(&parser->input),
+    .depth = 1
   };
   if (parser->input.capture) probe.input.capture = &capture;
   struct Plan *plan = parser->plan;
@@ -2623,6 +2645,8 @@ static void expansion_contents(
   int32_t c = peek(input);
   bool double_quoted = context != UNQUOTED;
   size_t owner = 0;
+  bool nested = c == '{' || c == '(';
+  if (nested) capture_substitution(input, true, false);
   if (c == '{') {
     owner = owner_begin(parser, BEGIN_PARAMETER_EXPANSION, dollar.start);
     parameter(parser, double_quoted);
@@ -2635,7 +2659,7 @@ static void expansion_contents(
     }
   } else if (c == '\'' && !double_quoted) {
     owner = owner_begin(parser, BEGIN_DOLLAR_SINGLE_QUOTED, dollar.start);
-    capture_change(input, dollar, -1, true);
+    capture_change(input, dollar, -1);
     dollar_quote(parser, text);
     owner_end(parser, owner, consumed_offset(input));
     return;
@@ -2643,6 +2667,7 @@ static void expansion_contents(
     dollar_literal(parser, text, dollar, context);
     return;
   }
+  if (nested) capture_substitution(input, false, false);
   owner_end(parser, owner, consumed_offset(input));
   text_push(parser, text, (struct Unit){-1, dollar.start, offset(input)});
 }
@@ -2660,10 +2685,16 @@ static void expansion(
 static void escaped_character(struct Parser *parser, struct Token *token) {
   struct Input *input = &parser->input;
   struct Unit slash = pop(input);
+  if (
+    raw(input, input->position) < 0 &&
+    (parser->backquote_end || input->end == parser->plan->source_end)
+  ) {
+    text_push(parser, &token->text, slash);
+    return;
+  }
   size_t owner = owner_begin(parser, BEGIN_ESCAPED_CHARACTER, slash.start);
   if (raw(input, input->position) >= 0)
     text_push(parser, &token->text, escaped_unit(input, slash));
-  else if (parser->backquote_end) text_push(parser, &token->text, slash);
   else
     issue(
       parser,
@@ -2889,7 +2920,35 @@ static size_t unit_after(
   return low;
 }
 
-// Changes nest or are disjoint; later changes take precedence.
+static void remove_delimiter_quotes(struct Text *text) {
+  int32_t quote = 0;
+  size_t output = 0;
+  for (size_t i = 0; i < text->count; i++) {
+    struct Unit unit = text->units[i];
+    if (quote == '\'') {
+      if (unit.value == '\'') quote = 0;
+      else text->units[output++] = unit;
+      continue;
+    }
+    if (unit.value == '"') {
+      quote = quote ? 0 : '"';
+      continue;
+    }
+    if (!quote && unit.value == '\'') {
+      quote = '\'';
+      continue;
+    }
+    if (unit.value == '\\' && i + 1 < text->count) {
+      int32_t next = text->units[i + 1].value;
+      if (!quote || expansion_escape(next) || next == '"')
+        unit = text->units[++i];
+    }
+    text->units[output++] = unit;
+  }
+  text->count = output;
+}
+
+// Changes must nest or be disjoint.
 static struct Text captured_delimiter(
   struct Parser *parser,
   const struct Capture *capture,
@@ -2917,14 +2976,18 @@ static struct Text captured_delimiter(
     if (!slot) encode(parser, &bytes, units[j]);
     else if (slot != removed) {
       struct Change change = capture->changes[slot - 1];
-      encode(
-        parser,
-        &bytes,
-        (struct Unit){change.value, change.start, change.end}
-      );
+      struct Unit unit = {change.value, change.start, change.end};
+      if (change.value == '\'' || change.value == -'\'' - 2) {
+        const char *escaped_quote = "'\\''";
+        for (size_t i = 0; escaped_quote[i]; i++) {
+          unit.value = escaped_quote[i];
+          text_push(parser, &bytes, unit);
+        }
+      } else encode(parser, &bytes, unit);
     }
   }
   ts_free(slots);
+  if (capture->quoted) remove_delimiter_quotes(&bytes);
   return bytes;
 }
 
@@ -2964,7 +3027,7 @@ static void here_document_line(
       int32_t next = raw(input, input->position);
       if (next == '\n') {
         unit.end = input->units[input->position++].end;
-        capture_change(input, unit, -1, false);
+        capture_change(input, unit, -1);
         continue;
       }
       text_push(parser, line, unit);
@@ -2991,9 +3054,11 @@ static bool here_document_end_line(
   bytes->count = 0;
   for (size_t i = *first; i < line->count && line->units[i].value != '\n'; i++)
     encode(parser, bytes, line->units[i]);
+  bool newline = line->count && line->units[line->count - 1].value == '\n';
+  bool source_eof = parser->input.position == parser->input.count &&
+    parser->input.end == parser->plan->source_end;
   bool found = bytes->count == here->delimiter.count &&
-    line->count &&
-    line->units[line->count - 1].value == '\n';
+    (newline || (bytes->count && source_eof));
   for (size_t i = 0; found && i < bytes->count; i++)
     found &= bytes->units[i].value == here->delimiter.units[i].value;
   return found;
@@ -3042,8 +3107,13 @@ static bool here_document(
     here_document_lines(parser, here, &body, &at_line_start, &boundary);
   if (!here->quoted) here_body(parser, body, boundary);
   ts_free(body.units);
+  bool accepted_eof = input->end == parser->plan->source_end;
   // An unstarted body's gap must not belong to an outer body.
-  if (!found && !backquote_cut(parser, UNDEFINED_BACKQUOTE_HERE_DOCUMENT))
+  if (
+    !found &&
+    !accepted_eof &&
+    !backquote_cut(parser, UNDEFINED_BACKQUOTE_HERE_DOCUMENT)
+  )
     report(
       parser,
       (struct Fault){HERE_DOCUMENT_ENDING_GAP, input->end, input->end, owner},
@@ -3319,13 +3389,8 @@ static bool redirect_operand(struct Parser *parser, enum Lexeme kind) {
   bool here = kind == HERE || kind == HERE_STRIP;
   struct Capture capture = {.parent = parser->input.capture};
   size_t begin = parser->input.position;
-  bool quoted_delimiter = parser->quoted_delimiter;
-  if (here) {
-    parser->input.capture = &capture;
-    parser->quoted_delimiter = false;
-  }
+  if (here) parser->input.capture = &capture;
   const struct Token *target = look(parser);
-  parser->quoted_delimiter = quoted_delimiter;
   parser->input.capture = capture.parent;
   parser->plan->failed |= capture.failed;
   bool word = target->kind == WORD;
@@ -4212,7 +4277,6 @@ static bool later_child(const struct Plan *plan, size_t a, size_t b) {
   return a > b;
 }
 
-// Ordered sibling ranges allow early termination.
 static size_t place_unowned(
   const struct Plan *plan,
   const struct PublicChild *children,
@@ -4330,7 +4394,6 @@ static bool replaces_issue(
   return candidate->recovery.complete && !current->recovery.complete;
 }
 
-// A completed recovery leaves its boundary available to independent faults.
 static bool covered(
   const struct Plan *plan,
   const struct Issue *candidate,
@@ -4547,7 +4610,7 @@ static void decode_faults(struct Parser *parser, const struct Text *source) {
 static bool prepare(struct Scanner *scanner, TSLexer *lexer) {
   struct Text source = {0};
   bool success = read_source(lexer, &source);
-  struct Plan plan = {.failed = !success};
+  struct Plan plan = {.source_end = source.count, .failed = !success};
   struct Rejected rejected = {0};
   struct Parser parser = {
     .input = {source.units, source.count, 0, source.count, NULL, &rejected},
