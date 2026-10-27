@@ -15,6 +15,10 @@ Guarantees cover fresh parsing only.
 npm install @konomanoasa/tree-sitter-diagnostic-sh
 ```
 
+## Parsing Policy
+
+[Parsing Policy](PARSING_POLICY.md)
+
 ## Development
 
 ```sh
@@ -22,10 +26,6 @@ npm install
 npm run build
 npm test
 ```
-
-## Parsing Policy
-
-[Parsing Policy](PARSING_POLICY.md)
 
 ## Specification
 

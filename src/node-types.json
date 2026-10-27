@@ -3953,6 +3953,10 @@
             "named": true
           },
           {
+            "type": "invalid_control_escape",
+            "named": true
+          },
+          {
             "type": "invalid_do",
             "named": true
           },
@@ -4029,10 +4033,6 @@
             "named": true
           },
           {
-            "type": "reserved_colon_word",
-            "named": true
-          },
-          {
             "type": "separator_gap",
             "named": true
           },
@@ -4050,14 +4050,6 @@
           },
           {
             "type": "then_gap",
-            "named": true
-          },
-          {
-            "type": "undefined_backquote_comment",
-            "named": true
-          },
-          {
-            "type": "undefined_backquote_here_document",
             "named": true
           },
           {
@@ -4138,46 +4130,6 @@
           },
           {
             "type": "unmatched_parenthesis",
-            "named": true
-          },
-          {
-            "type": "unspecified_control_escape",
-            "named": true
-          },
-          {
-            "type": "unspecified_dollar_quote_escape",
-            "named": true
-          },
-          {
-            "type": "unspecified_empty_hex_escape",
-            "named": true
-          },
-          {
-            "type": "unspecified_expansion_start",
-            "named": true
-          },
-          {
-            "type": "unspecified_here_document_newline",
-            "named": true
-          },
-          {
-            "type": "unspecified_here_document_start",
-            "named": true
-          },
-          {
-            "type": "unspecified_hex_escape",
-            "named": true
-          },
-          {
-            "type": "unspecified_negation_spacing",
-            "named": true
-          },
-          {
-            "type": "unspecified_octal_escape",
-            "named": true
-          },
-          {
-            "type": "unspecified_parameter_quote",
             "named": true
           }
         ]
@@ -4731,6 +4683,10 @@
     "named": true
   },
   {
+    "type": "invalid_control_escape",
+    "named": true
+  },
+  {
     "type": "invalid_do",
     "named": true
   },
@@ -4819,10 +4775,6 @@
     "named": true
   },
   {
-    "type": "reserved_colon_word",
-    "named": true
-  },
-  {
     "type": "separator_gap",
     "named": true
   },
@@ -4844,14 +4796,6 @@
   },
   {
     "type": "then_gap",
-    "named": true
-  },
-  {
-    "type": "undefined_backquote_comment",
-    "named": true
-  },
-  {
-    "type": "undefined_backquote_here_document",
     "named": true
   },
   {
@@ -4932,46 +4876,6 @@
   },
   {
     "type": "unmatched_parenthesis",
-    "named": true
-  },
-  {
-    "type": "unspecified_control_escape",
-    "named": true
-  },
-  {
-    "type": "unspecified_dollar_quote_escape",
-    "named": true
-  },
-  {
-    "type": "unspecified_empty_hex_escape",
-    "named": true
-  },
-  {
-    "type": "unspecified_expansion_start",
-    "named": true
-  },
-  {
-    "type": "unspecified_here_document_newline",
-    "named": true
-  },
-  {
-    "type": "unspecified_here_document_start",
-    "named": true
-  },
-  {
-    "type": "unspecified_hex_escape",
-    "named": true
-  },
-  {
-    "type": "unspecified_negation_spacing",
-    "named": true
-  },
-  {
-    "type": "unspecified_octal_escape",
-    "named": true
-  },
-  {
-    "type": "unspecified_parameter_quote",
     "named": true
   }
 ]

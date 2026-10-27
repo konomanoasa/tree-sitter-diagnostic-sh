@@ -266,7 +266,7 @@ static void test_overlapping_issues_ignore_recording_order(void) {
   } cases[] = {
     {BEGIN_FOR_CLAUSE,
       {INVALID_FOR_NAME, 4, 5, 0, 1, {8, true}},
-      {UNSPECIFIED_EXPANSION_START, 4, 6, 4, 2, {6, true}},
+      {INVALID_PARAMETER_NAME, 4, 6, 4, 2, {6, true}},
       {INVALID_FOR_NAME, 4, 5, 0, 1, {8, true}}},
     {BEGIN_FOR_CLAUSE,
       {INVALID_FOR_NAME, 4, 5, 0, 1, {8, true}},
@@ -298,7 +298,7 @@ static void test_overlapping_issues_ignore_recording_order(void) {
       {COMMAND_GAP, 4, 4, 0, 1, {8, true}}},
     {BEGIN_PARAMETER_EXPANSION,
       {PARAMETER_OPERATOR_ERROR, 4, 5, 0, 1, {19, false}},
-      {UNSPECIFIED_PARAMETER_QUOTE, 4, 5, 0, 1, {8, true}},
+      {PARAMETER_WORD_GAP, 4, 5, 0, 1, {8, true}},
       {PARAMETER_OPERATOR_ERROR, 4, 5, 0, 1, {19, false}}},
     {BEGIN_PARAMETER_EXPANSION,
       {PARAMETER_OPERATOR_ERROR, 4, 5, 0, 1, {8, true}},
@@ -370,27 +370,7 @@ static void test_reported_faults_ignore_recording_order(void) {
       10,
       11,
       {11, true}},
-    {"echo `$( # `",
-      UNDEFINED_BACKQUOTE_SUBSTITUTION,
-      BEGIN_BACKQUOTE_SUBSTITUTION,
-      5,
-      11,
-      12,
-      {12, true}},
-    {"echo `$( cat <<E\n`",
-      UNDEFINED_BACKQUOTE_SUBSTITUTION,
-      BEGIN_BACKQUOTE_SUBSTITUTION,
-      5,
-      17,
-      18,
-      {18, true}},
-    {"echo `cat <<E \"`",
-      UNDEFINED_BACKQUOTE_QUOTE,
-      BEGIN_BACKQUOTE_SUBSTITUTION,
-      5,
-      15,
-      16,
-      {16, true}},
+
   };
   for (size_t c = 0; c < ARRAY_LENGTH(cases); c++) {
     struct MockLexer mock = mock_input(cases[c].source);
@@ -587,6 +567,7 @@ static void test_allocation_failures(void) {
     "echo $'\\c@' $'\\c\\q'\n",
     "cat <<EOF \"a\nb\"\nbody\nEOF\n",
     "cat <<$'\\q'\nbody\nq\n",
+    "cat <<$'A\\0B'C <<$'\\u00e9'\nAC\nbody\n",
     "cat <<$(printf $'a\\'b')\"tail\"\n${x:bad}\n$(printf a'b)tail\ncat >\n",
     "cat <<\"`printf \\\"ab\\\"`\"\nbody\n`printf \"ab\"`\ncat >\n",
     "echo `cat <<A <<$'\\q' <<F\nA\nq\nF\n`",
@@ -625,6 +606,10 @@ static void test_nesting_limit(void) {
     {"echo \"", "${x:-", "x", "}", "\"\n", 1, 1},
     {"echo `echo ", "${x:-", "x", "}", "`\n", 1, 1},
     {"cat <<EOF\n", "${x:-", "x", "}", "\nEOF\n", 0, 1},
+    {"cat <<", "${x:-", "x", "}", "\n", 0, 1},
+    {"cat <<\"", "${x:-", "x", "}", "\"\n", 1, 1},
+    {"cat <<", "$(", "x", ")", "\n", 0, 1},
+    {"echo $(cat <<", "${x:-", "x", "}", ")\n", 1, 1},
     {"echo ", "$(( , ", "x++", " ))", "\n", 0, 2},
   };
   for (size_t context = 0; context < ARRAY_LENGTH(contexts); context++) {
@@ -749,28 +734,70 @@ static void test_delimiter_spelling_and_body_quoting(void) {
     {"$'a\\x62'", "ab", true},
     {"$'a\\'b'", "a'b", true},
     {"$'a\\047b'", "a'b", true},
-    {"${x:-'ab'}", "${x:-'ab'}", false},
-    {"${x#'ab'}", "${x#'ab'}", false},
+    {"$'\\q'", "\\q", true},
+    {"$'a\\\nb'", "a\\\nb", true},
+    {"$'\\x'", "", true},
+    {"$'\\x141'",
+      "\024"
+      "1",
+      true},
+    {"$'\\x4142'", "A42", true},
+    {"$'\\7774'",
+      "\377"
+      "4",
+      true},
+    {"$'A\\400B'C", "AC", true},
+    {"$'A\\0B'C", "AC", true},
+    {"$'A\\c@B'C", "AC", true},
+    {"$'A\\0B'$'D\\0E'F", "ADF", true},
+    {"$'A\\0B\\'C'D", "AD", true},
+    {"$'\\u0041B'", "AB", true},
+    {"$'\\U00000041B'", "AB", true},
+    {"$'A\\uGB'C", "AC", true},
+    {"$'\\u00e9'", "\303\251", true},
+    {"$'\\ud800'", "\355\240\200", true},
+    {"$'A\\U00110000B'", "AB", true},
+    {"${x:-'ab'}", "${x:-ab}", true},
+    {"${x#'ab'}", "${x#ab}", true},
     {"\"${x:-\"ab\"}\"", "${x:-ab}", true},
-    {"\"${x:-a\\}b}\"", "${x:-a\\}b}", true},
-    {"$(printf 'ab')", "$(printf 'ab')", false},
-    {"$(printf a\\qb)", "$(printf a\\qb)", false},
+    {"\"${x:-a\\}b}\"", "${x:-a}b}", true},
+    {"$(printf 'ab')", "$(printf ab)", true},
+    {"$(printf a\\qb)", "$(printf a\\qb)", true},
+    {"$(f ${x:?\\q})", "$(f ${x:?\\q})", true},
+    {"$(printf ${x#a\\qb})", "$(printf ${x#a\\qb})", true},
+    {"`printf ${x:-a\\qb}`", "`printf ${x:-a\\qb}`", true},
+    {"$(printf ${x:-a\\}b})", "$(printf ${x:-a}b})", true},
+    {"$(printf \"${x#a\\qb}\")", "$(printf ${x#aqb})", true},
+    {"$(printf ${x:-${y#a\\qb}})", "$(printf ${x:-${y#a\\qb}})", true},
+    {"$(printf \"${x:-${y#a\\qb}}\")", "$(printf ${x:-${y#aqb}})", true},
+    {"${x:-a\\qb}", "${x:-aqb}", true},
+    {"${x:-\"a\\}b\"}", "${x:-a}b}", true},
+    {"${x#\"a\\}b\"}", "${x#a}b}", true},
+    {"\"${x:-\"a\\}b\"}\"", "${x:-a}b}", true},
+    {"${x:-\"a\\qb\"}", "${x:-a\\qb}", true},
+    {"$(printf ${x:-\"a\\}b\"})", "$(printf ${x:-a}b})", true},
+    {"${x:-$(printf \"a\\}b\")}", "${x:-$(printf a\\}b)}", true},
+    {"\"a\\}b\"", "a\\}b", true},
     {"$(printf 'ab')\"tail\"", "$(printf ab)tail", true},
-    {"$(printf $'a\\x62')", "$(printf 'ab')", false},
-    {"$(printf $'a\\'b')", "$(printf 'a'\\''b')", false},
-    {"\"$(printf $'a\\x62')\"", "$(printf 'ab')", true},
-    {"\"$(printf 'ab')\"", "$(printf 'ab')", true},
+    {"$(printf $'a\\x62')", "$(printf ab)", true},
+    {"$(printf $'a\\'b')", "$(printf a'b)", true},
+    {"\"$(printf $'a\\x62')\"", "$(printf ab)", true},
+    {"\"$(printf 'ab')\"", "$(printf ab)", true},
     {"\"$(printf \"ab\")\"", "$(printf ab)", true},
-    {"\"$(printf '\"')\"", "$(printf ')\"", true},
+    {"\"$(printf '\"')\"", "$(printf \")", true},
     {"\"${x:-\"$(printf 'ab')\"}\"", "${x:-$(printf ab)}", true},
-    {"\"$(printf 'a')\"$(printf 'b')", "$(printf 'a')$(printf b)", true},
-    {"`printf 'ab'`", "`printf 'ab'`", false},
-    {"`printf \\`x\\`#tag END`", "`printf \\`x\\`#tag END`", false},
+    {"\"$(printf 'a')\"$(printf 'b')", "$(printf a)$(printf b)", true},
+    {"`printf 'ab'`", "`printf ab`", true},
+    {"`printf \\`x\\`#tag END`", "`printf `x`#tag END`", true},
     {"\"`printf \\\"ab\\\"`\"", "`printf \"ab\"`", true},
-    {"\"`printf $'ab'`\"", "`printf $'ab'`", true},
+    {"\"`printf \\\"'ab'\\\"`\"", "`printf \"ab\"`", true},
+    {"\"`printf $'ab'`\"", "`printf ab`", true},
     {"`printf a\\\nb`", "`printf ab`", false},
     {"$((1+${x:-'2'}))", "$((1+${x:-'2'}))", false},
-    {"\"$((1+$(printf '2')))\"", "$((1+$(printf '2')))", true},
+    {"$((1+'2'))", "$((1+2))", true},
+    {"$((1+\"2\"))", "$((1+2))", true},
+    {"$\\\n(printf 'ab')", "$(printf ab)", true},
+    {"\"$((1+$(printf '2')))\"", "$((1+$(printf 2)))", true},
     {"$((printf 'ab'); :)\"tail\"", "$((printf ab); :)tail", true},
   };
   for (size_t i = 0; i < ARRAY_LENGTH(cases); i++) {
@@ -803,8 +830,33 @@ static void test_delimiter_spelling_and_body_quoting(void) {
   }
 }
 
+static void test_control_escape_bytes(void) {
+  const struct {
+    int32_t operand;
+    uint8_t bytes[4];
+    size_t count;
+  } cases[] = {
+    {'@', {0}, 1},
+    {'?', {127}, 1},
+    {'\'', {7}, 1},
+    {0xe9, {3, 0xa9}, 2},
+    {0x1f600, {0x10, 0x9f, 0x98, 0x80}, 4},
+  };
+  for (size_t i = 0; i < ARRAY_LENGTH(cases); i++) {
+    struct Unit units[] = {{'\\', 0, 1}, {'c', 1, 2}, {cases[i].operand, 2, 3}};
+    struct Input input = {.units = units, .count = 3, .position = 1, .end = 3};
+    struct DollarEscape escape = read_dollar_escape(&input, units[0]);
+    assert(escape.fault == TOKEN_TYPE_COUNT);
+    assert(escape.source.start == 0 && escape.source.end == 3);
+    assert(input.position == 3);
+    assert(escape.count == cases[i].count);
+    assert(memcmp(escape.bytes, cases[i].bytes, escape.count) == 0);
+  }
+}
+
 int main(void) {
   test_delimiter_spelling_and_body_quoting();
+  test_control_escape_bytes();
   test_parameter_issue_events();
   test_empty_source();
   test_normal_here_documents();

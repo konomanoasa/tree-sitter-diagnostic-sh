@@ -4,48 +4,14 @@ import { diagnosticStructure } from "./support/cst.js";
 import { parse } from "./support/parser.js";
 import cases from "./support/parser-cases.json" with { type: "json" };
 
-for (const [name, word, expected] of [
-  ["single quote", "$'text'", {}],
-  ["backquote substitution", "$`echo ok`", {}],
-  ["escaped dollar", "$\\$x", {}],
-  [
-    "double quote",
-    '$"text"',
-    {
-      quotedParameter: ["unspecified_parameter_quote", 1, 2, 7],
-      body: ["unspecified_expansion_start", 0, 2, 2],
-    },
-  ],
-  [
-    "ordinary backslash",
-    "$\\q",
-    {
-      quoted: ["unspecified_expansion_start", 0, 2, 2],
-      quotedParameter: ["unspecified_expansion_start", 0, 2, 2],
-      body: ["unspecified_expansion_start", 0, 2, 2],
-    },
-  ],
-  [
-    "operator",
-    "$;",
-    {
-      quoted: ["unspecified_expansion_start", 0, 2, 2],
-      parameter: ["unspecified_expansion_start", 0, 2, 2],
-      quotedParameter: ["unspecified_expansion_start", 0, 2, 2],
-      body: ["unspecified_expansion_start", 0, 2, 2],
-    },
-  ],
-  [
-    "a line continuation before an ordinary character",
-    "$\\\n%",
-    {
-      unquoted: ["unspecified_expansion_start", 0, 4, 4],
-      quoted: ["unspecified_expansion_start", 0, 4, 4],
-      parameter: ["unspecified_expansion_start", 0, 4, 4],
-      quotedParameter: ["unspecified_expansion_start", 0, 4, 4],
-      body: ["unspecified_expansion_start", 0, 4, 4],
-    },
-  ],
+for (const [name, word] of [
+  ["single quote", "$'text'"],
+  ["backquote substitution", "$`echo ok`"],
+  ["escaped dollar", "$\\$x"],
+  ["double quote", '$"text"'],
+  ["ordinary backslash", "$\\q"],
+  ["operator", "$;"],
+  ["a line continuation before an ordinary character", "$\\\n%"],
 ]) {
   for (const [context, prefix, suffix] of [
     ["unquoted", "echo ", "\n"],
@@ -56,30 +22,7 @@ for (const [name, word, expected] of [
     ["quotedBody", "cat <<'EOF'\n", "\nEOF\n"],
   ]) {
     test(`a dollar before ${name} follows the ${context} lexical context`, () => {
-      const offset = Buffer.byteLength(prefix);
-      const fault = expected[context];
-      assert.deepEqual(
-        parse(`${prefix}${word}${suffix}`).issues.map(
-          ({ fault, boundary }) => ({
-            fault,
-            boundary,
-          }),
-        ),
-        fault
-          ? [
-              {
-                fault: {
-                  kind: fault[0],
-                  range: [offset + fault[1], offset + fault[2]],
-                },
-                boundary: {
-                  kind: "recovery_resume",
-                  range: [offset + fault[3], offset + fault[3]],
-                },
-              },
-            ]
-          : [],
-      );
+      assert.deepEqual(parse(`${prefix}${word}${suffix}`).issues, []);
     });
   }
 }
@@ -238,15 +181,15 @@ for (const [name, word, rejected, delimiter] of [
     `\${x:-$(printf 'ab')}`,
     `\${x:-$(printf ab)}`,
   ],
-  ["prefix pattern", `"\${x#'ab'}"`, `\${x#ab}`, `\${x#'ab'}`],
-  ["long prefix pattern", `"\${x##'ab'}"`, `\${x##ab}`, `\${x##'ab'}`],
-  ["suffix pattern", `"\${x%'ab'}"`, `\${x%ab}`, `\${x%'ab'}`],
-  ["long suffix pattern", `"\${x%%'ab'}"`, `\${x%%ab}`, `\${x%%'ab'}`],
+  ["prefix pattern", `"\${x#'ab'}"`, `\${x#'ab'}`, `\${x#ab}`],
+  ["long prefix pattern", `"\${x##'ab'}"`, `\${x##'ab'}`, `\${x##ab}`],
+  ["suffix pattern", `"\${x%'ab'}"`, `\${x%'ab'}`, `\${x%ab}`],
+  ["long suffix pattern", `"\${x%%'ab'}"`, `\${x%%'ab'}`, `\${x%%ab}`],
   [
     "command single quotes",
     `"$(printf 'ab')"`,
-    "$(printf ab)",
     "$(printf 'ab')",
+    "$(printf ab)",
   ],
   [
     "command double quotes",
@@ -254,44 +197,44 @@ for (const [name, word, rejected, delimiter] of [
     '$(printf "ab")',
     "$(printf ab)",
   ],
-  ["quoted parenthesis", `"$(printf ')')"`, "$(printf ))", "$(printf ')')"],
+  ["quoted parenthesis", `"$(printf ')')"`, "$(printf ')')", "$(printf ))"],
   [
     "nested command",
     `"$(printf $(printf 'ab'))"`,
-    "$(printf $(printf ab))",
     "$(printf $(printf 'ab'))",
+    "$(printf $(printf ab))",
   ],
   [
     "parameter command",
     `"\${x:-$(printf 'ab')}"`,
-    `\${x:-$(printf ab)}`,
     `\${x:-$(printf 'ab')}`,
+    `\${x:-$(printf ab)}`,
   ],
-  ["backquote", "\"`printf 'ab'`\"", "`printf ab`", "`printf 'ab'`"],
+  ["backquote", "\"`printf 'ab'`\"", "`printf 'ab'`", "`printf ab`"],
   [
     "arithmetic command",
     `"$((1+$(printf '2')))"`,
-    "$((1+$(printf 2)))",
     "$((1+$(printf '2')))",
+    "$((1+$(printf 2)))",
   ],
   [
     "concatenated word",
     `pre"$(printf 'ab')"post`,
-    "pre$(printf ab)post",
     "pre$(printf 'ab')post",
+    "pre$(printf ab)post",
   ],
   [
     "adjacent quoted and unquoted commands",
     `"$(printf 'a')"$(printf 'b')`,
-    "$(printf a)$(printf b)",
     "$(printf 'a')$(printf b)",
+    "$(printf a)$(printf b)",
   ],
 ]) {
   for (const operator of ["<<", "<<-"]) {
-    test(`here-document delimiter ${name} matches only its quoted spelling: ${operator}`, () => {
+    test(`here-document delimiter ${name} matches only its quote-removed value: ${operator}`, () => {
       const prefix = `cat ${operator}${word}\n`;
       const indent = operator === "<<-" ? "\t" : "";
-      const source = `${prefix}${indent}$%\n${indent}${rejected}\n${indent})\n${indent}${delimiter}\ncat >\n`;
+      const source = `${prefix}${indent}\${x:bad}\n${indent}${rejected}\n${indent})\n${indent}${delimiter}\ncat >\n`;
       const redirect = Buffer.byteLength(source) - 2;
       assert.deepEqual(parse(source).issues, [
         {
@@ -332,24 +275,9 @@ for (const [name, prefix, suffix] of [
   ],
   ["here-document body", "cat <<EOF\n", "\nEOF\n"],
 ]) {
-  test(`parameter quotes in ${name} retain their ordinary diagnostic`, () => {
-    const start = Buffer.byteLength(prefix);
+  test(`parameter quotes in ${name} are accepted`, () => {
     const source = `${prefix}\${x:-"ab"}${suffix}`;
-    assert.deepEqual(parse(source).issues, [
-      {
-        owner: { kind: "parameter_expansion", range: [start, start + 10] },
-        range: [start + 5, start + 9],
-        fault: {
-          kind: "unspecified_parameter_quote",
-          range: [start + 5, start + 6],
-        },
-        boundary: {
-          kind: "recovery_resume",
-          range: [start + 9, start + 9],
-        },
-        fragments: [[start + 6, start + 9]],
-      },
-    ]);
+    assert.deepEqual(parse(source).issues, []);
   });
 }
 
@@ -442,22 +370,9 @@ for (const operator of [
     ["{ ", "}", "; }\n"],
     ["", "if", "\n"],
   ]) {
-    test(`recovery consumes ${JSON.stringify(operator)} ${operand} as a redirect operand`, () => {
+    test(`a colon command consumes ${JSON.stringify(operator)} ${operand} as a redirect operand`, () => {
       const command = `${prefix}thing: ${operator} ${operand}`;
-      const start = Buffer.byteLength(prefix);
-      const resume = Buffer.byteLength(command);
-      assert.deepEqual(
-        parse(command + suffix).issues.map(({ fault, boundary }) => ({
-          fault,
-          boundary,
-        })),
-        [
-          {
-            fault: { kind: "reserved_colon_word", range: [start, start + 6] },
-            boundary: { kind: "recovery_resume", range: [resume, resume] },
-          },
-        ],
-      );
+      assert.deepEqual(parse(command + suffix).issues, []);
     });
   }
 }
@@ -471,9 +386,8 @@ for (const operator of [">", "<<"]) {
     ["case fallthrough", "case x in a) ", ";& b) :;; esac\n"],
     ["EOF", "", ""],
   ]) {
-    test(`recovery leaves ${name} after ${operator} outside the redirect operand`, () => {
+    test(`a missing redirect target after a colon command preserves ${name} after ${operator}`, () => {
       const command = `${prefix}thing: ${operator}`;
-      const start = Buffer.byteLength(prefix);
       const resume = Buffer.byteLength(command);
       assert.deepEqual(
         parse(command + suffix).issues.map(({ fault, boundary }) => ({
@@ -482,7 +396,13 @@ for (const operator of [">", "<<"]) {
         })),
         [
           {
-            fault: { kind: "reserved_colon_word", range: [start, start + 6] },
+            fault: {
+              kind:
+                operator === "<<"
+                  ? "here_document_delimiter_gap"
+                  : "redirection_target_gap",
+              range: [resume, resume],
+            },
             boundary: {
               kind: suffix ? "recovery_resume" : "recovery_eof",
               range: [resume, resume],
@@ -651,8 +571,6 @@ for (const context of [
   {
     name: "a word",
     prefix: "echo ",
-    lexicalOwner: "word",
-    lexicalStart: 5,
     gapOwner: null,
     gapStart: 0,
     gap: null,
@@ -660,8 +578,6 @@ for (const context of [
   {
     name: "double quotes",
     prefix: 'echo "',
-    lexicalOwner: "double_quoted",
-    lexicalStart: 5,
     gapOwner: "double_quoted",
     gapStart: 5,
     gap: "double_quote_gap",
@@ -669,8 +585,6 @@ for (const context of [
   {
     name: "a parameter word",
     prefix: "echo ${x:-",
-    lexicalOwner: "word",
-    lexicalStart: 10,
     gapOwner: "parameter_expansion",
     gapStart: 5,
     gap: "parameter_ending_gap",
@@ -678,8 +592,6 @@ for (const context of [
   {
     name: "a command substitution",
     prefix: "echo $(echo ",
-    lexicalOwner: "word",
-    lexicalStart: 12,
     gapOwner: "command_substitution",
     gapStart: 5,
     gap: "substitution_ending_gap",
@@ -687,8 +599,6 @@ for (const context of [
   {
     name: "a backquote substitution",
     prefix: "echo `echo ",
-    lexicalOwner: "word",
-    lexicalStart: 11,
     gapOwner: "backquote_substitution",
     gapStart: 5,
     gap: "backquote_gap",
@@ -696,8 +606,6 @@ for (const context of [
   {
     name: "a here-document body",
     prefix: "cat <<E\n",
-    lexicalOwner: "here_document_body",
-    lexicalStart: 8,
     gapOwner: null,
     gapStart: 0,
     gap: null,
@@ -705,8 +613,6 @@ for (const context of [
   {
     name: "a here-document body inside an unfinished substitution",
     prefix: "$(cat <<E\n",
-    lexicalOwner: "here_document_body",
-    lexicalStart: 10,
     gapOwner: "command_substitution",
     gapStart: 0,
     gap: "substitution_ending_gap",
@@ -714,8 +620,6 @@ for (const context of [
   {
     name: "a parameter inside a here-document body",
     prefix: "cat <<E\n${x:-",
-    lexicalOwner: "word",
-    lexicalStart: 13,
     gapOwner: "parameter_expansion",
     gapStart: 8,
     gap: "parameter_ending_gap",
@@ -723,9 +627,9 @@ for (const context of [
 ]) {
   for (const { name, tail, kind, owned } of [
     {
-      name: "an invalid expansion start",
-      tail: [36, 37],
-      kind: "unspecified_expansion_start",
+      name: "an invalid parameter name",
+      tail: [36, 123, 58, 125],
+      kind: "invalid_parameter_name",
       owned: true,
     },
     {
@@ -749,11 +653,14 @@ for (const context of [
       const expected = [
         {
           owner: owned
-            ? { kind: context.lexicalOwner, range: [context.lexicalStart, end] }
+            ? { kind: "parameter_expansion", range: [start, end] }
             : null,
-          range: [start, end],
-          fault: { kind, range: [start, end] },
-          boundary: { kind: "recovery_resume", range: [end, end] },
+          range: owned ? [start + 2, start + 3] : [start, end],
+          fault: { kind, range: owned ? [start + 2, start + 3] : [start, end] },
+          boundary: {
+            kind: "recovery_resume",
+            range: owned ? [start + 3, start + 3] : [end, end],
+          },
           fragments: [],
         },
       ];
@@ -890,63 +797,47 @@ const interactions = [
     ],
   },
   {
-    name: "loop name with a word fault at the same start",
-    damaged: "for $%; do :; done",
+    name: "loop name containing an invalid parameter",
+    damaged: `for \${:}; do :; done`,
     normal: "for ix; do :; done",
     issues: [
       {
-        range: [4, 8],
-        owner: { kind: "for_clause", range: [0, 18] },
+        range: [4, 10],
+        owner: { kind: "for_clause", range: [0, 20] },
         fault: { kind: "invalid_for_name", range: [4, 5] },
-        boundary: { kind: "recovery_resume", range: [8, 8] },
-        fragments: [[5, 8]],
+        boundary: { kind: "recovery_resume", range: [10, 10] },
+        fragments: [[5, 10]],
       },
     ],
   },
   {
     name: "dollar quote escape",
-    damaged: "echo $'\\qtail'",
-    normal: "echo $'\\ntail'",
+    damaged: "echo $'\\c\\qtail'",
+    normal: "echo $'\\cAtail'",
     issues: [
       {
-        range: [7, 9],
+        range: [7, 11],
         owner: {
           kind: "dollar_single_quote_escape",
-          range: [7, 9],
+          range: [7, 11],
         },
         fault: {
-          kind: "unspecified_dollar_quote_escape",
-          range: [7, 9],
+          kind: "invalid_control_escape",
+          range: [7, 11],
         },
         boundary: {
           kind: "recovery_resume",
-          range: [9, 9],
+          range: [11, 11],
         },
         fragments: [],
       },
     ],
   },
   {
-    name: "negation and inner redirection",
+    name: "adjacent negation and inner redirection",
     damaged: "!(cat > )",
     normal: "! (cat > out)",
     issues: [
-      {
-        range: [0, 1],
-        owner: {
-          kind: "pipeline",
-          range: [0, 9],
-        },
-        fault: {
-          kind: "unspecified_negation_spacing",
-          range: [0, 1],
-        },
-        boundary: {
-          kind: "recovery_resume",
-          range: [1, 1],
-        },
-        fragments: [],
-      },
       {
         range: [8, 8],
         owner: {
@@ -989,25 +880,16 @@ const interactions = [
     ],
   },
   {
-    name: "reserved colon word",
-    damaged: "thing: ; echo ok",
-    normal: "thing ; echo ok",
+    name: "a colon command with a missing redirect target",
+    damaged: "thing: > ; echo ok",
+    normal: "thing: >out ; echo ok",
     issues: [
       {
-        range: [0, 7],
-        owner: {
-          kind: "word",
-          range: [0, 7],
-        },
-        fault: {
-          kind: "reserved_colon_word",
-          range: [0, 6],
-        },
-        boundary: {
-          kind: "recovery_resume",
-          range: [7, 7],
-        },
-        fragments: [[6, 7]],
+        range: [9, 9],
+        owner: { kind: "io_redirect", range: [7, 9] },
+        fault: { kind: "redirection_target_gap", range: [9, 9] },
+        boundary: { kind: "recovery_resume", range: [9, 9] },
+        fragments: [],
       },
     ],
   },

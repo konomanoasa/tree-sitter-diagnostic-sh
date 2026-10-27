@@ -65,15 +65,11 @@ enum TokenType {
   UNEXPECTED_NEGATION,
   COMMAND_GAP,
   SEPARATOR_GAP,
-  UNSPECIFIED_NEGATION_SPACING,
-  RESERVED_COLON_WORD,
   REDIRECTION_TARGET_GAP,
   INVALID_REDIRECTION_TARGET,
   HERE_DOCUMENT_DELIMITER_GAP,
   INVALID_HERE_DOCUMENT_DELIMITER,
   HERE_DOCUMENT_ENDING_GAP,
-  UNSPECIFIED_HERE_DOCUMENT_START,
-  UNSPECIFIED_HERE_DOCUMENT_NEWLINE,
   FOR_NAME_GAP,
   INVALID_FOR_NAME,
   FOR_SEPARATOR_GAP,
@@ -102,11 +98,7 @@ enum TokenType {
   DOUBLE_QUOTE_GAP,
   DOLLAR_QUOTE_GAP,
   INCOMPLETE_ESCAPE,
-  UNSPECIFIED_DOLLAR_QUOTE_ESCAPE,
-  UNSPECIFIED_EMPTY_HEX_ESCAPE,
-  UNSPECIFIED_CONTROL_ESCAPE,
-  UNSPECIFIED_HEX_ESCAPE,
-  UNSPECIFIED_OCTAL_ESCAPE,
+  INVALID_CONTROL_ESCAPE,
   PARAMETER_NAME_GAP,
   INVALID_PARAMETER_NAME,
   PARAMETER_OPERATOR_GAP,
@@ -114,14 +106,10 @@ enum TokenType {
   PARAMETER_LENGTH_SUFFIX_ERROR,
   PARAMETER_WORD_GAP,
   PARAMETER_ENDING_GAP,
-  UNSPECIFIED_PARAMETER_QUOTE,
-  UNSPECIFIED_EXPANSION_START,
   ARITHMETIC_ENDING_GAP,
   SUBSTITUTION_ENDING_GAP,
   BACKQUOTE_GAP,
   UNDEFINED_BACKQUOTE_QUOTE,
-  UNDEFINED_BACKQUOTE_COMMENT,
-  UNDEFINED_BACKQUOTE_HERE_DOCUMENT,
   UNDEFINED_BACKQUOTE_SUBSTITUTION,
   RECOVERY_FRAGMENT,
   RECOVERY_RESUME,
@@ -139,16 +127,23 @@ struct Text {
   struct Unit *units;
   size_t count, capacity;
 };
-struct Change {
+enum DelimiterKind {
+  DELIMITER_PARAMETER,
+  DELIMITER_PATTERN,
+  DELIMITER_ARITHMETIC,
+  DELIMITER_COMMAND,
+  DELIMITER_BACKQUOTE,
+  DELIMITER_BODY,
+  DELIMITER_QUOTED_BODY,
+};
+struct DelimiterSpan {
   size_t start, end;
-  int32_t value;
+  enum DelimiterKind kind;
 };
 struct Capture {
-  struct Change *changes;
+  struct DelimiterSpan *spans;
   size_t count, capacity;
-  size_t depth, verbatim;
-  bool quoted, failed, newlines_only;
-  struct Unit newline;
+  bool failed;
   size_t uncertain;
   struct Capture *parent;
 };
@@ -1558,45 +1553,17 @@ static size_t consumed_offset(const struct Input *input) {
   return input->position ? input->units[input->position - 1].end : 0;
 }
 
-static bool capturing_delimiter(const struct Input *input) {
-  for (
-    const struct Capture *capture = input->capture; capture;
-    capture = capture->parent
-  )
-    if (!capture->newlines_only) return true;
-  return false;
-}
-
-static void capture_quote(struct Input *input) {
-  for (
-    struct Capture *capture = input->capture; capture; capture = capture->parent
-  )
-    if (!capture->newlines_only && !capture->depth) capture->quoted = true;
-}
-
-static void
-capture_substitution(struct Input *input, bool entering, bool verbatim) {
+static void capture_span(
+  struct Input *input,
+  size_t start,
+  size_t end,
+  enum DelimiterKind kind
+) {
   for (
     struct Capture *capture = input->capture; capture; capture = capture->parent
   ) {
-    if (entering) {
-      capture->depth++;
-      if (verbatim) capture->verbatim++;
-    } else {
-      capture->depth--;
-      if (verbatim) capture->verbatim--;
-    }
-  }
-}
-
-static void
-capture_change(struct Input *input, struct Unit unit, int32_t value) {
-  for (
-    struct Capture *capture = input->capture; capture; capture = capture->parent
-  ) {
-    if (capture->newlines_only || capture->verbatim) continue;
-    struct Change *grown = diagnostic_grow(
-      capture->changes,
+    struct DelimiterSpan *grown = diagnostic_grow(
+      capture->spans,
       &capture->capacity,
       capture->count + 1,
       sizeof(*grown)
@@ -1605,9 +1572,8 @@ capture_change(struct Input *input, struct Unit unit, int32_t value) {
       capture->failed = true;
       continue;
     }
-    capture->changes = grown;
-    capture->changes[capture->count++] =
-      (struct Change){unit.start, unit.end, value};
+    capture->spans = grown;
+    capture->spans[capture->count++] = (struct DelimiterSpan){start, end, kind};
   }
 }
 
@@ -1615,48 +1581,25 @@ static void capture_uncertain(struct Input *input, size_t position) {
   for (
     struct Capture *capture = input->capture; capture; capture = capture->parent
   )
-    if (
-      !capture->newlines_only &&
-      (!capture->uncertain || position < capture->uncertain - 1)
-    )
+    if (!capture->uncertain || position < capture->uncertain - 1)
       capture->uncertain = position + 1;
-}
-
-static void capture_newline(struct Input *input, struct Unit unit) {
-  if (unit.value == '\n')
-    for (
-      struct Capture *capture = input->capture; capture;
-      capture = capture->parent
-    )
-      if (!capture->newline.end) capture->newline = unit;
 }
 
 static struct Unit read_raw(struct Input *input) {
   if (input->position >= input->count)
     return (struct Unit){-1, input->end, input->end};
   struct Unit unit = input->units[input->position++];
-  capture_newline(input, unit);
   return unit;
 }
 
 static struct Unit pop(struct Input *input) {
-  size_t position = logical_position(input);
-  if (position > input->position)
-    capture_change(
-      input,
-      (
-        struct Unit
-      ){0, input->units[input->position].start, input->units[position - 1].end},
-      -1
-    );
-  input->position = position;
+  input->position = logical_position(input);
   return read_raw(input);
 }
 
 static struct Unit escaped_unit(struct Input *input, struct Unit slash) {
   struct Unit escaped = input->units[input->position++];
   escaped.start = slash.start;
-  capture_quote(input);
   return escaped;
 }
 
@@ -1794,30 +1737,12 @@ static const uint64_t fault_owners[TOKEN_TYPE_COUNT] = {
   [PARAMETER_LENGTH_SUFFIX_ERROR] = OWNER_BIT(BEGIN_PARAMETER_EXPANSION),
   [PARAMETER_WORD_GAP] = OWNER_BIT(BEGIN_PARAMETER_EXPANSION),
   [PARAMETER_ENDING_GAP] = OWNER_BIT(BEGIN_PARAMETER_EXPANSION),
-  [UNSPECIFIED_PARAMETER_QUOTE] = OWNER_BIT(BEGIN_PARAMETER_EXPANSION),
   [SUBSTITUTION_ENDING_GAP] = OWNER_BIT(BEGIN_COMMAND_SUBSTITUTION),
   [BACKQUOTE_GAP] = OWNER_BIT(BEGIN_BACKQUOTE_SUBSTITUTION),
   [UNDEFINED_BACKQUOTE_QUOTE] = OWNER_BIT(BEGIN_BACKQUOTE_SUBSTITUTION),
-  [UNDEFINED_BACKQUOTE_COMMENT] = OWNER_BIT(BEGIN_BACKQUOTE_SUBSTITUTION),
-  [UNDEFINED_BACKQUOTE_HERE_DOCUMENT] = OWNER_BIT(BEGIN_BACKQUOTE_SUBSTITUTION),
   [UNDEFINED_BACKQUOTE_SUBSTITUTION] = OWNER_BIT(BEGIN_BACKQUOTE_SUBSTITUTION),
   [ARITHMETIC_ENDING_GAP] = OWNER_BIT(BEGIN_ARITHMETIC_EXPANSION),
-  [UNSPECIFIED_DOLLAR_QUOTE_ESCAPE] =
-    OWNER_BIT(BEGIN_DOLLAR_SINGLE_QUOTE_ESCAPE),
-  [UNSPECIFIED_EMPTY_HEX_ESCAPE] = OWNER_BIT(BEGIN_DOLLAR_SINGLE_QUOTE_ESCAPE),
-  [UNSPECIFIED_CONTROL_ESCAPE] = OWNER_BIT(BEGIN_DOLLAR_SINGLE_QUOTE_ESCAPE),
-  [UNSPECIFIED_HEX_ESCAPE] = OWNER_BIT(BEGIN_DOLLAR_SINGLE_QUOTE_ESCAPE),
-  [UNSPECIFIED_OCTAL_ESCAPE] = OWNER_BIT(BEGIN_DOLLAR_SINGLE_QUOTE_ESCAPE),
-  [UNSPECIFIED_EXPANSION_START] = OWNER_BIT(BEGIN_WORD) |
-    OWNER_BIT(BEGIN_DOUBLE_QUOTED) |
-    OWNER_BIT(BEGIN_PARAMETER_EXPANSION) |
-    OWNER_BIT(BEGIN_ARITHMETIC_EXPANSION) |
-    OWNER_BIT(BEGIN_HERE_DOCUMENT_BODY),
-  [UNSPECIFIED_HERE_DOCUMENT_START] = OWNER_BIT(BEGIN_COMMAND_SUBSTITUTION) |
-    OWNER_BIT(BEGIN_BACKQUOTE_SUBSTITUTION),
-  [UNSPECIFIED_HERE_DOCUMENT_NEWLINE] = OWNER_BIT(BEGIN_WORD),
-  [RESERVED_COLON_WORD] = OWNER_BIT(BEGIN_WORD),
-  [UNSPECIFIED_NEGATION_SPACING] = OWNER_BIT(BEGIN_PIPELINE),
+  [INVALID_CONTROL_ESCAPE] = OWNER_BIT(BEGIN_DOLLAR_SINGLE_QUOTE_ESCAPE),
 };
 
 static size_t fault_owner(const struct Parser *parser, enum TokenType kind) {
@@ -1870,12 +1795,6 @@ static size_t fault_context(const struct Parser *parser, struct Fault fault) {
     case UNDEFINED_BACKQUOTE_QUOTE:
     case UNDEFINED_BACKQUOTE_SUBSTITUTION:
       return owners[parser->owner].start;
-    case UNDEFINED_BACKQUOTE_HERE_DOCUMENT:
-      return owners[parser->owner].kind == BEGIN_HERE_DOCUMENT_BODY
-        ? owners[parser->owner].start
-        : SIZE_MAX;
-    case UNSPECIFIED_HERE_DOCUMENT_START:
-      return SIZE_MAX;
     default:
       return fault.owner ? owners[fault.owner].start : fault.at;
   }
@@ -1994,7 +1913,6 @@ static void quoted(struct Parser *parser, struct Text *text, int32_t quote) {
   int32_t parent_closer = parser->closer;
   parser->closer = quote;
   pop(input);
-  capture_quote(input);
   while (!parser->plan->failed) {
     int32_t c = peek_quoted(input, literal);
     if (c < 0) {
@@ -2157,20 +2075,6 @@ parameter_word(struct Parser *parser, bool double_quoted, struct Fault *fault) {
       expansion(parser, &ignored, double_quoted ? DOUBLE_QUOTED : UNQUOTED);
     else if (c == '`') backquote(parser, &ignored, double_quoted);
     else if (c == '"' || (c == '\'' && !double_quoted)) {
-      if (
-        c == '"' &&
-        double_quoted &&
-        fault->kind == TOKEN_TYPE_COUNT &&
-        !capturing_delimiter(input)
-      ) {
-        *fault = (struct Fault){
-          UNSPECIFIED_PARAMETER_QUOTE,
-          offset(input),
-          input->units[logical_position(input)].end,
-          0
-        };
-        parser->opaque = true;
-      }
       quoted(parser, &ignored, c);
     } else if (c == '\\') parameter_escape(parser, double_quoted, fault);
     else pop(input);
@@ -2178,7 +2082,7 @@ parameter_word(struct Parser *parser, bool double_quoted, struct Fault *fault) {
   ts_free(ignored.units);
 }
 
-static void parameter(struct Parser *parser, bool double_quoted) {
+static bool parameter(struct Parser *parser, bool double_quoted) {
   struct Input *input = &parser->input;
   pop(input);
   int32_t parent_closer = parser->closer;
@@ -2208,19 +2112,7 @@ static void parameter(struct Parser *parser, bool double_quoted) {
   else if (fault.kind == TOKEN_TYPE_COUNT)
     input_end_gap(parser, PARAMETER_ENDING_GAP);
   parser->closer = parent_closer;
-}
-
-static bool undecidable_delimiter_fault(enum TokenType kind) {
-  switch (kind) {
-    case UNSPECIFIED_DOLLAR_QUOTE_ESCAPE:
-    case UNSPECIFIED_EMPTY_HEX_ESCAPE:
-    case UNSPECIFIED_CONTROL_ESCAPE:
-    case UNSPECIFIED_HEX_ESCAPE:
-    case UNSPECIFIED_OCTAL_ESCAPE:
-      return true;
-    default:
-      return false;
-  }
+  return head.pattern;
 }
 
 static int hex_value(int32_t c) {
@@ -2230,72 +2122,105 @@ static int hex_value(int32_t c) {
   return -1;
 }
 
-static enum TokenType hex_escape(struct Parser *parser, struct Unit *unit) {
-  struct Input *input = &parser->input;
-  uint8_t value = 0;
-  size_t digits = 0;
-  while (hex_value(raw(input, input->position)) >= 0) {
-    value = (uint8_t)((value << 4) | hex_value(read_raw(input).value));
-    digits++;
+static size_t encode_value(int32_t value, uint8_t bytes[4]) {
+  uint32_t c = (uint32_t)value;
+  if (c < 0x80) {
+    bytes[0] = (uint8_t)c;
+    return 1;
   }
-  unit->value = -(int32_t)value - 2;
-  int32_t next = raw(input, input->position);
-  if (!digits && !undecodable(next))
-    return next < 0 ? INCOMPLETE_ESCAPE : UNSPECIFIED_EMPTY_HEX_ESCAPE;
-  return digits > 2 ? UNSPECIFIED_HEX_ESCAPE : TOKEN_TYPE_COUNT;
+  if (c < 0x800) {
+    bytes[0] = (uint8_t)(0xc0 | (c >> 6));
+    bytes[1] = (uint8_t)(0x80 | (c & 63));
+    return 2;
+  }
+  if (c < 0x10000) {
+    bytes[0] = (uint8_t)(0xe0 | (c >> 12));
+    bytes[1] = (uint8_t)(0x80 | ((c >> 6) & 63));
+    bytes[2] = (uint8_t)(0x80 | (c & 63));
+    return 3;
+  }
+  bytes[0] = (uint8_t)(0xf0 | (c >> 18));
+  bytes[1] = (uint8_t)(0x80 | ((c >> 12) & 63));
+  bytes[2] = (uint8_t)(0x80 | ((c >> 6) & 63));
+  bytes[3] = (uint8_t)(0x80 | (c & 63));
+  return 4;
 }
 
-static enum TokenType
-octal_escape(struct Parser *parser, struct Unit *unit, int32_t first) {
-  struct Input *input = &parser->input;
-  unsigned value = (unsigned)(first - '0');
-  for (
-    size_t i = 1; i < 3 &&
-    raw(input, input->position) >= '0' &&
-    raw(input, input->position) <= '7';
-    i++
-  )
-    value = (value << 3) | (unsigned)(read_raw(input).value - '0');
-  unit->value = -(int32_t)(uint8_t)value - 2;
-  return value > UINT8_MAX ? UNSPECIFIED_OCTAL_ESCAPE : TOKEN_TYPE_COUNT;
-}
+struct DollarEscape {
+  struct Unit source;
+  enum TokenType fault;
+  uint8_t bytes[5];
+  size_t count;
+};
 
-static enum TokenType
-control_escape(struct Parser *parser, struct Unit *unit, size_t *end) {
-  struct Input *input = &parser->input;
+static struct DollarEscape
+read_dollar_escape(struct Input *input, struct Unit slash) {
+  struct DollarEscape escape = {.source = slash, .fault = TOKEN_TYPE_COUNT};
   int32_t c = raw(input, input->position);
-  int32_t next = raw(input, input->position + 1);
-  if (
-    (c >= 'A' && c <= 'Z') ||
-    (c >= 'a' && c <= 'z') ||
-    c == '[' ||
-    c == ']' ||
-    c == '^' ||
-    c == '_' ||
-    c == '?'
-  ) {
-    read_raw(input);
-    unit->value = c == '?' ? 127 : c & 31;
-    return TOKEN_TYPE_COUNT;
+  if (c < 0) {
+    escape.fault = INCOMPLETE_ESCAPE;
+    return escape;
   }
-  if (c == '\\' && next == '\\') {
-    read_raw(input);
-    read_raw(input);
-    unit->value = 28;
-    return TOKEN_TYPE_COUNT;
+  read_raw(input);
+  if (c == 'x' || c == 'u' || c == 'U') {
+    unsigned limit = c == 'x' ? 2 : c == 'u' ? 4 : 8;
+    uint32_t value = 0;
+    for (
+      unsigned digits = 0;
+      digits < limit && hex_value(raw(input, input->position)) >= 0;
+      digits++
+    )
+      value = (value << 4) | (unsigned)hex_value(read_raw(input).value);
+    if (c == 'x') {
+      escape.bytes[0] = (uint8_t)value;
+      escape.count = 1;
+    } else if (value <= 0x10ffff)
+      escape.count = encode_value((int32_t)value, escape.bytes);
+  } else if (c >= '0' && c <= '7') {
+    unsigned value = (unsigned)(c - '0');
+    for (
+      unsigned digits = 1; digits < 3 &&
+      raw(input, input->position) >= '0' &&
+      raw(input, input->position) <= '7';
+      digits++
+    )
+      value = (value << 3) | (unsigned)(read_raw(input).value - '0');
+    escape.bytes[0] = (uint8_t)value;
+    escape.count = 1;
+  } else if (c == 'c') {
+    c = raw(input, input->position);
+    int32_t next = raw(input, input->position + 1);
+    if (c < 0 || (c == '\\' && next < 0)) {
+      if (c == '\\') read_raw(input);
+      escape.fault = INCOMPLETE_ESCAPE;
+    } else if (undecodable(c) || (c == '\\' && undecodable(next))) {
+      read_raw(input);
+    } else if (c == '\\' && next != '\\') {
+      read_raw(input);
+      if (next != '\'') read_raw(input);
+      escape.fault = INVALID_CONTROL_ESCAPE;
+    } else {
+      read_raw(input);
+      if (c == '\\') read_raw(input);
+      escape.count = encode_value(c, escape.bytes);
+      escape.bytes[0] = c == '?' ? 127 : escape.bytes[0] & 31;
+    }
+  } else {
+    const char *keys = "abefnrtv\"'\\";
+    const uint8_t values[] = {7, 8, 27, 12, 10, 13, 9, 11, '"', '\'', '\\'};
+    for (size_t i = 0; keys[i]; i++)
+      if (c == keys[i]) {
+        escape.bytes[0] = values[i];
+        escape.count = 1;
+        break;
+      }
+    if (!escape.count && !undecodable(c)) {
+      escape.bytes[0] = '\\';
+      escape.count = 1 + encode_value(c, escape.bytes + 1);
+    }
   }
-  if (c < 0 || (c == '\\' && next < 0)) {
-    if (c == '\\') read_raw(input);
-    return INCOMPLETE_ESCAPE;
-  }
-  if (undecodable(c) || (c == '\\' && undecodable(next)))
-    return TOKEN_TYPE_COUNT;
-  if (c != '\'') {
-    read_raw(input);
-    if (c == '\\' && next != '\'') read_raw(input);
-    *end = consumed_offset(input);
-  }
-  return UNSPECIFIED_CONTROL_ESCAPE;
+  escape.source.end = consumed_offset(input);
+  return escape;
 }
 
 static struct Fault
@@ -2303,39 +2228,17 @@ dollar_quote_escape(struct Parser *parser, struct Unit *unit) {
   struct Input *input = &parser->input;
   size_t owner =
     owner_begin(parser, BEGIN_DOLLAR_SINGLE_QUOTE_ESCAPE, unit->start);
-  enum TokenType fault = TOKEN_TYPE_COUNT;
-  size_t end = 0;
-  int32_t c = raw(input, input->position);
-  if (c < 0) fault = INCOMPLETE_ESCAPE;
-  else {
-    read_raw(input);
-    unit->value = c;
-    const char *keys = "abefnrtv\"'\\";
-    const int32_t values[] = {7, 8, 27, 12, 10, 13, 9, 11, '"', '\'', '\\'};
-    bool known = false;
-    for (size_t i = 0; keys[i]; i++)
-      if (c == keys[i]) {
-        unit->value = values[i];
-        known = true;
-        break;
-      }
-    if (c == 'x') fault = hex_escape(parser, unit);
-    else if (c >= '0' && c <= '7') fault = octal_escape(parser, unit, c);
-    else if (c == 'c') fault = control_escape(parser, unit, &end);
-    else if (!known && !undecodable(c)) fault = UNSPECIFIED_DOLLAR_QUOTE_ESCAPE;
-    unit->end = input->units[input->position - 1].end;
-    capture_change(input, *unit, unit->value);
-  }
-  if (undecidable_delimiter_fault(fault)) capture_uncertain(input, unit->start);
-  if (!end) end = unit->end;
-  owner_end(parser, owner, end);
-  return (struct Fault){fault, unit->start, end, owner};
+  struct DollarEscape escape = read_dollar_escape(input, *unit);
+  *unit = escape.source;
+  unit->value = escape.count == 1 ? escape.bytes[0] : -1;
+  if (escape.fault != TOKEN_TYPE_COUNT) capture_uncertain(input, unit->start);
+  owner_end(parser, owner, unit->end);
+  return (struct Fault){escape.fault, unit->start, unit->end, owner};
 }
 
 static void dollar_quote(struct Parser *parser, struct Text *text) {
   struct Input *input = &parser->input;
   pop(input);
-  capture_quote(input);
   bool closed = false;
   while (!parser->plan->failed && input->position < input->count) {
     struct Unit unit = read_raw(input);
@@ -2421,8 +2324,6 @@ static void backquote_contents(
 ) {
   struct Input *input = &parser->input;
   struct Unit opening = pop(input);
-  size_t begin = input->position;
-  capture_substitution(input, true, true);
   struct Text content = {0};
   size_t end = input->end;
   size_t closed = backquote_body(parser, double_quoted, &content, &end);
@@ -2436,17 +2337,12 @@ static void backquote_contents(
   );
   ts_free(rejected.bits);
   ts_free(content.units);
-  capture_substitution(input, false, true);
-  if (capturing_delimiter(input)) {
-    for (size_t i = begin; i + 1 < input->position; i++) {
-      if (input->units[i].value != '\\') continue;
-      struct Unit slash = input->units[i++];
-      if (input->units[i].value == '\n') {
-        slash.end = input->units[i].end;
-        capture_change(input, slash, -1);
-      }
-    }
-  }
+  capture_span(
+    input,
+    opening.start,
+    consumed_offset(input),
+    DELIMITER_BACKQUOTE
+  );
   text_push(parser, text, (struct Unit){-1, opening.start, offset(input)});
 }
 
@@ -2543,16 +2439,11 @@ arithmetic_valid(struct Plan *plan, const struct Text *content, bool open) {
 
 static void
 replay_capture(struct Parser *parser, const struct Capture *capture) {
-  if (capture->newline.end) capture_newline(&parser->input, capture->newline);
   if (capture->uncertain)
     capture_uncertain(&parser->input, capture->uncertain - 1);
   for (size_t i = 0; i < capture->count; i++) {
-    struct Change change = capture->changes[i];
-    capture_change(
-      &parser->input,
-      (struct Unit){0, change.start, change.end},
-      change.value
-    );
+    struct DelimiterSpan span = capture->spans[i];
+    capture_span(&parser->input, span.start, span.end, span.kind);
   }
 }
 
@@ -2560,10 +2451,7 @@ static bool arithmetic(struct Parser *parser) {
   size_t at = logical_position(&parser->input);
   if (rejected_arithmetic(&parser->input, at)) return false;
   struct Parser probe = child_parser(parser, parser->input);
-  struct Capture capture = {
-    .newlines_only = !capturing_delimiter(&parser->input),
-    .depth = 1
-  };
+  struct Capture capture = {0};
   if (parser->input.capture) probe.input.capture = &capture;
   struct Plan *plan = parser->plan;
   struct PlanMark mark = plan_mark(plan);
@@ -2581,58 +2469,12 @@ static bool arithmetic(struct Parser *parser) {
     if (!closed) input_end_gap(parser, ARITHMETIC_ENDING_GAP);
   }
   plan->failed |= capture.failed;
-  ts_free(capture.changes);
+  ts_free(capture.spans);
   if (!accepted) {
     plan_restore(plan, mark);
     if (!plan->failed) reject_arithmetic(parser, at);
   }
   return accepted;
-}
-
-static bool
-literal_dollar(const struct Parser *parser, enum ExpansionContext context) {
-  const struct Input *input = &parser->input;
-  int32_t c = peek(input);
-  if (
-    c < 0 ||
-    undecodable(c) ||
-    blank(c) ||
-    c == '\n' ||
-    c == parser->closer ||
-    c == '\'' ||
-    c == '`'
-  )
-    return true;
-  if (c == '"') return context == UNQUOTED || context == DOUBLE_QUOTED;
-  if (c == '\\') {
-    if (context == UNQUOTED) return true;
-    int32_t next = raw(input, logical_position(input) + 1);
-    return expansion_escape(next) ||
-      (context == DOUBLE_QUOTED &&
-        (next == '"' || (parser->closer == '}' && next == '}')));
-  }
-  return (context == UNQUOTED && !parser->closer && separator(c)) ||
-    (context == ARITHMETIC && c == ')');
-}
-
-static void dollar_literal(
-  struct Parser *parser,
-  struct Text *text,
-  struct Unit dollar,
-  enum ExpansionContext context
-) {
-  struct Input *input = &parser->input;
-  if (!literal_dollar(parser, context)) {
-    size_t end = input->units[logical_position(input)].end;
-    issue(
-      parser,
-      UNSPECIFIED_EXPANSION_START,
-      dollar.start,
-      end,
-      (struct Recovery){end, true}
-    );
-  }
-  text_push(parser, text, dollar);
 }
 
 static void expansion_contents(
@@ -2646,28 +2488,29 @@ static void expansion_contents(
   bool double_quoted = context != UNQUOTED;
   size_t owner = 0;
   bool nested = c == '{' || c == '(';
-  if (nested) capture_substitution(input, true, false);
+  enum DelimiterKind kind = DELIMITER_PARAMETER;
   if (c == '{') {
     owner = owner_begin(parser, BEGIN_PARAMETER_EXPANSION, dollar.start);
-    parameter(parser, double_quoted);
+    if (parameter(parser, double_quoted)) kind = DELIMITER_PATTERN;
   } else if (c == '(') {
     pop(input);
     owner = owner_begin(parser, BEGIN_ARITHMETIC_EXPANSION, dollar.start);
+    kind = DELIMITER_ARITHMETIC;
     if (peek(input) != '(' || !arithmetic(parser)) {
       if (owner) parser->plan->owners[owner].kind = BEGIN_COMMAND_SUBSTITUTION;
+      kind = DELIMITER_COMMAND;
       substitution(parser);
     }
   } else if (c == '\'' && !double_quoted) {
     owner = owner_begin(parser, BEGIN_DOLLAR_SINGLE_QUOTED, dollar.start);
-    capture_change(input, dollar, -1);
     dollar_quote(parser, text);
     owner_end(parser, owner, consumed_offset(input));
     return;
   } else if (!parameter_name(input, false)) {
-    dollar_literal(parser, text, dollar, context);
+    text_push(parser, text, dollar);
     return;
   }
-  if (nested) capture_substitution(input, false, false);
+  if (nested) capture_span(input, dollar.start, consumed_offset(input), kind);
   owner_end(parser, owner, consumed_offset(input));
   text_push(parser, text, (struct Unit){-1, dollar.start, offset(input)});
 }
@@ -2750,24 +2593,11 @@ static struct Token word(struct Parser *parser) {
 
 static void comment(struct Parser *parser) {
   struct Input *input = &parser->input;
-  size_t start = offset(input);
   input->position = logical_position(input);
   while (
     raw(input, input->position) >= 0 && raw(input, input->position) != '\n'
   )
     input->position++;
-  if (input->position == input->count && parser->backquote_end)
-    owned_issue(
-      parser,
-      (
-        struct Fault
-      ){UNDEFINED_BACKQUOTE_COMMENT,
-        input->end,
-        parser->backquote_end,
-        fault_owner(parser, UNDEFINED_BACKQUOTE_COMMENT)},
-      (struct Recovery){parser->backquote_end, true},
-      start
-    );
 }
 
 static enum Lexeme operator_kind(struct Parser *parser, int32_t c) {
@@ -2815,7 +2645,7 @@ static struct Token lex(struct Parser *parser) {
   struct Token token = {.start = offset(input)};
   int32_t c = peek(input);
   if (c < 0) {
-    // Trailing line continuations must not survive as here-document text.
+    // Consume trailing continuations before reading here-document text.
     pop(input);
     token.kind = END;
     token.end = token.start;
@@ -2827,35 +2657,11 @@ static struct Token lex(struct Parser *parser) {
   return token;
 }
 
-static void saved_token_newline(struct Parser *parser, struct Unit newline) {
-  if (!newline.end || parser->token.kind == NEWLINE) return;
-  report(
-    parser,
-    (
-      struct Fault
-    ){UNSPECIFIED_HERE_DOCUMENT_NEWLINE,
-      newline.start,
-      newline.end,
-      parser->token.owner},
-    (struct Recovery){offset(&parser->input), true}
-  );
-}
-
-static void lookahead(struct Parser *parser) {
-  struct Capture capture = {
-    .parent = parser->input.capture,
-    .newlines_only = true
-  };
-  bool pending = parser->document_count > 0;
-  if (pending) parser->input.capture = &capture;
-  parser->token = lex(parser);
-  parser->input.capture = capture.parent;
-  if (pending) saved_token_newline(parser, capture.newline);
-  parser->ready = true;
-}
-
 static const struct Token *look(struct Parser *parser) {
-  if (!parser->ready) lookahead(parser);
+  if (!parser->ready) {
+    parser->token = lex(parser);
+    parser->ready = true;
+  }
   return &parser->token;
 }
 
@@ -2868,38 +2674,13 @@ static struct Fault token_fault(
   const struct Token *token = look(parser);
   struct Fault fault = {missing ? gap : invalid, token->start, token->end, 0};
   if (missing) fault.end = fault.at;
-  fault.owner = fault.kind == RESERVED_COLON_WORD
-    ? token->owner
-    : fault_owner(parser, fault.kind);
+  fault.owner = fault_owner(parser, fault.kind);
   return fault;
 }
 
 static void encode(struct Parser *parser, struct Text *text, struct Unit unit) {
-  uint32_t c = (uint32_t)unit.value;
   uint8_t bytes[4];
-  size_t count;
-  if (unit.value <= -2) {
-    bytes[0] = (uint8_t)(-unit.value - 2);
-    count = 1;
-  } else if (c < 0x80) {
-    bytes[0] = (uint8_t)c;
-    count = 1;
-  } else if (c < 0x800) {
-    bytes[0] = (uint8_t)(0xc0 | (c >> 6));
-    bytes[1] = (uint8_t)(0x80 | (c & 63));
-    count = 2;
-  } else if (c < 0x10000) {
-    bytes[0] = (uint8_t)(0xe0 | (c >> 12));
-    bytes[1] = (uint8_t)(0x80 | ((c >> 6) & 63));
-    bytes[2] = (uint8_t)(0x80 | (c & 63));
-    count = 3;
-  } else {
-    bytes[0] = (uint8_t)(0xf0 | (c >> 18));
-    bytes[1] = (uint8_t)(0x80 | ((c >> 12) & 63));
-    bytes[2] = (uint8_t)(0x80 | ((c >> 6) & 63));
-    bytes[3] = (uint8_t)(0x80 | (c & 63));
-    count = 4;
-  }
+  size_t count = encode_value(unit.value, bytes);
   for (size_t i = 0; i < count; i++)
     text_push(parser, text, (struct Unit){bytes[i], unit.start, unit.end});
 }
@@ -2920,75 +2701,186 @@ static size_t unit_after(
   return low;
 }
 
-static void remove_delimiter_quotes(struct Text *text) {
-  int32_t quote = 0;
-  size_t output = 0;
-  for (size_t i = 0; i < text->count; i++) {
-    struct Unit unit = text->units[i];
-    if (quote == '\'') {
-      if (unit.value == '\'') quote = 0;
-      else text->units[output++] = unit;
-      continue;
-    }
-    if (unit.value == '"') {
-      quote = quote ? 0 : '"';
-      continue;
-    }
-    if (!quote && unit.value == '\'') {
-      quote = '\'';
-      continue;
-    }
-    if (unit.value == '\\' && i + 1 < text->count) {
-      int32_t next = text->units[i + 1].value;
-      if (!quote || expansion_escape(next) || next == '"')
-        unit = text->units[++i];
-    }
-    text->units[output++] = unit;
+enum DelimiterMode {
+  DELIMITER_WORD_MODE,
+  DELIMITER_QUOTE_MODE,
+  DELIMITER_COMMAND_MODE,
+  DELIMITER_ARITHMETIC_MODE,
+};
+
+struct DelimiterReader {
+  struct Parser *parser;
+  struct Input input;
+  const struct Capture *capture;
+  size_t *slots, start;
+  struct Text bytes;
+  bool quoted;
+};
+
+static void
+delimiter_single_quote(struct DelimiterReader *reader, bool dollar) {
+  struct Input *input = &reader->input;
+  reader->quoted = true;
+  pop(input);
+  bool terminated = false;
+  while (input->position < input->count && !reader->parser->plan->failed) {
+    struct Unit unit = read_raw(input);
+    if (unit.value == '\'') break;
+    if (dollar && unit.value == '\\') {
+      struct DollarEscape escape = read_dollar_escape(input, unit);
+      for (size_t i = 0; i < escape.count && !terminated; i++) {
+        if (escape.bytes[i] == 0) terminated = true;
+        else
+          text_push(
+            reader->parser,
+            &reader->bytes,
+            (struct Unit){escape.bytes[i], unit.start, escape.source.end}
+          );
+      }
+    } else if (!terminated) encode(reader->parser, &reader->bytes, unit);
   }
-  text->count = output;
 }
 
-// Changes must nest or be disjoint.
+static void
+delimiter_body(struct DelimiterReader *reader, size_t end, bool quoted) {
+  struct Input *input = &reader->input;
+  while (input->position < end && !reader->parser->plan->failed) {
+    struct Unit unit = read_raw(input);
+    if (!quoted && unit.value == '\\' && input->position < end) {
+      int32_t next = raw(input, input->position);
+      if (next == '\n') {
+        read_raw(input);
+        continue;
+      }
+      encode(reader->parser, &reader->bytes, unit);
+      if (next == '\\') encode(reader->parser, &reader->bytes, read_raw(input));
+    } else encode(reader->parser, &reader->bytes, unit);
+  }
+}
+
+static void delimiter_contents(
+  struct DelimiterReader *reader,
+  size_t end,
+  enum DelimiterMode mode,
+  bool parameter,
+  bool closing_quote
+) {
+  struct Input *input = &reader->input;
+  while (input->position < end && !reader->parser->plan->failed) {
+    size_t position = input->position;
+    int32_t c = raw(input, position);
+    size_t slot = reader->slots[position - reader->start];
+    if (slot) {
+      struct DelimiterSpan span = reader->capture->spans[slot - 1];
+      size_t limit =
+        unit_after(input->units, position, end, span.end - 1, false);
+      if (
+        limit > position &&
+        (span.kind == DELIMITER_BODY || span.kind == DELIMITER_QUOTED_BODY)
+      ) {
+        delimiter_body(reader, limit, span.kind == DELIMITER_QUOTED_BODY);
+        continue;
+      }
+      if (limit > position && (c == '$' || c == '`')) {
+        unsigned prefix = span.kind == DELIMITER_BACKQUOTE ? 1
+          : span.kind == DELIMITER_ARITHMETIC              ? 3
+                                                           : 2;
+        for (unsigned i = 0; i < prefix && input->position < limit; i++)
+          encode(reader->parser, &reader->bytes, pop(input));
+        enum DelimiterMode nested = DELIMITER_COMMAND_MODE;
+        bool operand =
+          span.kind == DELIMITER_PARAMETER || span.kind == DELIMITER_PATTERN;
+        if (operand)
+          nested = span.kind == DELIMITER_PARAMETER &&
+              (mode == DELIMITER_QUOTE_MODE ||
+                mode == DELIMITER_ARITHMETIC_MODE)
+            ? DELIMITER_QUOTE_MODE
+            : mode == DELIMITER_COMMAND_MODE ? DELIMITER_COMMAND_MODE
+                                             : DELIMITER_WORD_MODE;
+        else if (span.kind == DELIMITER_ARITHMETIC)
+          nested = DELIMITER_ARITHMETIC_MODE;
+        if (!nest(reader->parser)) break;
+        delimiter_contents(reader, limit, nested, operand, false);
+        unnest(reader->parser);
+        continue;
+      }
+    }
+    if (c == '\\') {
+      struct Unit slash = read_raw(input);
+      if (input->position == end) {
+        encode(reader->parser, &reader->bytes, slash);
+        continue;
+      }
+      struct Unit next = read_raw(input);
+      if (next.value == '\n') continue;
+      reader->quoted = true;
+      bool remove = mode == DELIMITER_WORD_MODE ||
+        expansion_escape(next.value) ||
+        (mode != DELIMITER_ARITHMETIC_MODE && next.value == '"') ||
+        (parameter && next.value == '}');
+      if (!remove) encode(reader->parser, &reader->bytes, slash);
+      encode(reader->parser, &reader->bytes, next);
+      continue;
+    }
+    if (c == '"' && mode != DELIMITER_ARITHMETIC_MODE) {
+      read_raw(input);
+      reader->quoted = true;
+      if (closing_quote) break;
+      if (!nest(reader->parser)) break;
+      delimiter_contents(reader, end, DELIMITER_QUOTE_MODE, parameter, true);
+      unnest(reader->parser);
+      continue;
+    }
+    bool unquoted =
+      mode == DELIMITER_WORD_MODE || mode == DELIMITER_COMMAND_MODE;
+    if (c == '\'' && unquoted) {
+      delimiter_single_quote(reader, false);
+      continue;
+    }
+    if (c == '$' && unquoted) {
+      struct Input after = *input;
+      pop(&after);
+      if (peek(&after) == '\'') {
+        *input = after;
+        delimiter_single_quote(reader, true);
+        continue;
+      }
+    }
+    encode(reader->parser, &reader->bytes, read_raw(input));
+  }
+}
+
 static struct Text captured_delimiter(
   struct Parser *parser,
   const struct Capture *capture,
   size_t start,
-  size_t end
+  size_t end,
+  bool *quoted
 ) {
-  const size_t removed = SIZE_MAX;
-  const struct Unit *units = parser->input.units;
-  struct Text bytes = {0};
-  size_t *slots = ts_calloc(end - start + 1, sizeof(*slots));
-  if (!slots) {
+  struct DelimiterReader reader = {
+    .parser = parser,
+    .input = parser->input,
+    .capture = capture,
+    .start = start,
+    .slots = ts_calloc(end - start + 1, sizeof(size_t)),
+  };
+  if (!reader.slots) {
     parser->plan->failed = true;
-    return bytes;
+    return reader.bytes;
   }
+  reader.input.position = start;
+  reader.input.count = end;
+  reader.input.capture = NULL;
   for (size_t i = 0; i < capture->count; i++) {
-    struct Change change = capture->changes[i];
-    size_t first = unit_after(units, start, end, change.start, true);
-    size_t last = unit_after(units, first, end, change.end - 1, false);
-    if (first == last) continue;
-    for (size_t j = first; j < last; j++) slots[j - start] = removed;
-    if (change.value != -1) slots[first - start] = i + 1;
+    struct DelimiterSpan span = capture->spans[i];
+    size_t first = unit_after(reader.input.units, start, end, span.start, true);
+    if (first < end && span.end > span.start)
+      reader.slots[first - start] = i + 1;
   }
-  for (size_t j = start; j < end && !parser->plan->failed; j++) {
-    size_t slot = slots[j - start];
-    if (!slot) encode(parser, &bytes, units[j]);
-    else if (slot != removed) {
-      struct Change change = capture->changes[slot - 1];
-      struct Unit unit = {change.value, change.start, change.end};
-      if (change.value == '\'' || change.value == -'\'' - 2) {
-        const char *escaped_quote = "'\\''";
-        for (size_t i = 0; escaped_quote[i]; i++) {
-          unit.value = escaped_quote[i];
-          text_push(parser, &bytes, unit);
-        }
-      } else encode(parser, &bytes, unit);
-    }
-  }
-  ts_free(slots);
-  if (capture->quoted) remove_delimiter_quotes(&bytes);
-  return bytes;
+  delimiter_contents(&reader, end, DELIMITER_WORD_MODE, false, false);
+  ts_free(reader.slots);
+  *quoted = reader.quoted;
+  return reader.bytes;
 }
 
 static void here_body(struct Parser *parser, struct Text content, size_t end) {
@@ -3027,7 +2919,6 @@ static void here_document_line(
       int32_t next = raw(input, input->position);
       if (next == '\n') {
         unit.end = input->units[input->position++].end;
-        capture_change(input, unit, -1);
         continue;
       }
       text_push(parser, line, unit);
@@ -3107,19 +2998,23 @@ static bool here_document(
     here_document_lines(parser, here, &body, &at_line_start, &boundary);
   if (!here->quoted) here_body(parser, body, boundary);
   ts_free(body.units);
-  bool accepted_eof = input->end == parser->plan->source_end;
-  // An unstarted body's gap must not belong to an outer body.
-  if (
-    !found &&
-    !accepted_eof &&
-    !backquote_cut(parser, UNDEFINED_BACKQUOTE_HERE_DOCUMENT)
-  )
+  bool accepted_eof =
+    input->end == parser->plan->source_end || parser->backquote_end != 0;
+  // Keep unstarted-body gaps out of outer bodies.
+  if (!found && !accepted_eof)
     report(
       parser,
       (struct Fault){HERE_DOCUMENT_ENDING_GAP, input->end, input->end, owner},
       (struct Recovery){input->end, false}
     );
-  owner_end(parser, owner, consumed_offset(input));
+  size_t end = consumed_offset(input);
+  capture_span(
+    input,
+    body_start,
+    end,
+    here->quoted ? DELIMITER_QUOTED_BODY : DELIMITER_BODY
+  );
+  owner_end(parser, owner, end);
   return at_line_start;
 }
 
@@ -3206,13 +3101,6 @@ static bool special_builtin_name(const struct Token *token) {
   return false;
 }
 
-static bool reserved_colon(const struct Token *token) {
-  return token->kind == WORD &&
-    token->plain &&
-    token->text.count > 1 &&
-    token->text.units[token->text.count - 1].value == ':';
-}
-
 static const struct {
   const char *word;
   uint32_t stop;
@@ -3256,7 +3144,6 @@ static enum TokenType unexpected_fault(const struct Token *token) {
     case SEMI_AND:
       return UNEXPECTED_CASE_FALLTHROUGH;
     case WORD:
-      if (reserved_colon(token)) return RESERVED_COLON_WORD;
       if (spelling(token, "!")) return UNEXPECTED_NEGATION;
       for (size_t i = 0; i < sizeof(keywords) / sizeof(*keywords); i++)
         if (spelling(token, keywords[i].word)) return keywords[i].unexpected;
@@ -3308,8 +3195,7 @@ static bool command_start(const struct Token *token) {
 static bool simple_command_start(const struct Token *token) {
   return (token->kind == WORD || redirect_kind(token->kind)) &&
     !stop(token) &&
-    !spelling(token, "!") &&
-    !reserved_colon(token);
+    !spelling(token, "!");
 }
 
 static bool stop_or_end(struct Parser *parser, uint32_t stops) {
@@ -3369,10 +3255,12 @@ static bool declare_here_document(
     target->start,
     true
   );
+  bool quoted = false;
+  struct Text delimiter =
+    captured_delimiter(parser, capture, begin, parser->input.position, &quoted);
   parser->documents[parser->document_count++] = (struct Document){
-    .delimiter =
-      captured_delimiter(parser, capture, begin, parser->input.position),
-    .quoted = capture->quoted,
+    .delimiter = delimiter,
+    .quoted = quoted,
     .strip = strip,
     .uncertain =
       uncertain_position(parser->plan, capture, target->start, target->end)
@@ -3406,7 +3294,7 @@ static bool redirect_operand(struct Parser *parser, enum Lexeme kind) {
       ))
   )
     take(parser);
-  ts_free(capture.changes);
+  ts_free(capture.spans);
   return word;
 }
 
@@ -3508,10 +3396,6 @@ static void report_token(
 ) {
   struct Fault fault = token_fault(parser, missing, gap, invalid);
   report(parser, fault, seek(parser, stops));
-}
-
-static enum TokenType reserved_or(struct Parser *parser, enum TokenType kind) {
-  return reserved_colon(look(parser)) ? RESERVED_COLON_WORD : kind;
 }
 
 static bool take_stop(struct Parser *parser, uint32_t wanted) {
@@ -3647,7 +3531,7 @@ static void for_clause(struct Parser *parser) {
       parser,
       false,
       TOKEN_TYPE_COUNT,
-      reserved_or(parser, INVALID_FOR_HEADER),
+      INVALID_FOR_HEADER,
       STOP_DO | STOP_DONE
     );
     damaged = true;
@@ -3658,7 +3542,7 @@ static void for_clause(struct Parser *parser) {
     take_stop(parser, STOP_DONE);
     return;
   }
-  loop_body(parser, reserved_or(parser, INVALID_DO));
+  loop_body(parser, INVALID_DO);
 }
 
 static bool case_header(struct Parser *parser, struct Fault fault) {
@@ -3753,11 +3637,6 @@ static void case_clause(struct Parser *parser) {
     if (!case_header(parser, fault)) return;
   }
   linebreak(parser);
-  if (reserved_colon(look(parser))) {
-    struct Fault fault =
-      token_fault(parser, false, TOKEN_TYPE_COUNT, RESERVED_COLON_WORD);
-    if (!case_header(parser, fault)) return;
-  }
   if (!expect_stop(parser, STOP_IN, STOP_ESAC, IN_GAP, INVALID_IN)) {
     take_stop(parser, STOP_ESAC);
     return;
@@ -3858,12 +3737,8 @@ static void function_definition(struct Parser *parser, bool special_builtin) {
     return;
   }
   bool missing = command_boundary(parser);
-  struct Fault fault = token_fault(
-    parser,
-    missing,
-    FUNCTION_BODY_GAP,
-    reserved_or(parser, INVALID_FUNCTION_BODY)
-  );
+  struct Fault fault =
+    token_fault(parser, missing, FUNCTION_BODY_GAP, INVALID_FUNCTION_BODY);
   report(parser, fault, recover(parser, RECOVER_CONNECTORS));
 }
 
@@ -3899,23 +3774,8 @@ static void missing_command(struct Parser *parser) {
   issue(parser, COMMAND_GAP, at, at, recover(parser, 0));
 }
 
-static void negation(struct Parser *parser) {
-  size_t start = look(parser)->start;
-  size_t bang_end = look(parser)->text.units[0].end;
-  take(parser);
-  size_t next = offset(&parser->input);
-  if (look(parser)->kind == LEFT && look(parser)->start == next)
-    issue(
-      parser,
-      UNSPECIFIED_NEGATION_SPACING,
-      start,
-      bang_end,
-      (struct Recovery){look(parser)->start, true}
-    );
-}
-
 static void pipeline_contents(struct Parser *parser) {
-  if (spelling(look(parser), "!")) negation(parser);
+  if (spelling(look(parser), "!")) take(parser);
   if (command_boundary(parser)) {
     missing_command(parser);
     return;
@@ -4038,14 +3898,6 @@ static void parse_contents(
   child.backquote_end = backquote_end;
   commands(&child, BEGIN_LIST, 0, false);
   if (!backquote_end) input_end_gap(&child, BACKQUOTE_GAP);
-  else if (child.document_count)
-    issue(
-      &child,
-      UNSPECIFIED_HERE_DOCUMENT_START,
-      input.end,
-      backquote_end,
-      (struct Recovery){backquote_end, true}
-    );
   if (child.document_count && !child.input.capture && !backquote_end)
     documents(&child, false);
   clear_parser(&child);
@@ -4056,14 +3908,6 @@ static void substitution(struct Parser *parser) {
   commands(&child, BEGIN_LIST, STOP_RIGHT, false);
   bool closed = look(&child)->kind == RIGHT;
   if (closed) {
-    if (child.document_count)
-      issue(
-        &child,
-        UNSPECIFIED_HERE_DOCUMENT_START,
-        child.token.start,
-        child.token.end,
-        (struct Recovery){child.token.end, true}
-      );
     take(&child);
   } else
     unclosed(&child, UNDEFINED_BACKQUOTE_SUBSTITUTION, SUBSTITUTION_ENDING_GAP);
@@ -4329,7 +4173,6 @@ static unsigned requirement_order(enum TokenType kind) {
     case CASE_PATTERN_GAP:
     case INVALID_CASE_PATTERN:
     case PARAMETER_WORD_GAP:
-    case UNSPECIFIED_PARAMETER_QUOTE:
       return 2;
     case FI_GAP:
     case DONE_GAP:
@@ -4346,7 +4189,6 @@ static unsigned requirement_order(enum TokenType kind) {
     case BACKQUOTE_GAP:
     case HERE_DOCUMENT_ENDING_GAP:
       return 3;
-    case UNSPECIFIED_HERE_DOCUMENT_START:
     case FUNCTION_BODY_GAP:
     case INVALID_FUNCTION_BODY:
       return 4;
@@ -4561,7 +4403,7 @@ static bool publish(struct Scanner *scanner, struct Plan *plan, size_t end) {
       append_unowned(plan, children, &length, depths);
     if (success) {
       arrange_children(plan, children, length);
-      // An unowned region can extend beyond the child containing its start.
+      // Unowned regions may extend past their starting child.
       success = end_prefixes(plan, children, frames, end) &&
         emit_owner(scanner, plan, children, frames, end);
     }
