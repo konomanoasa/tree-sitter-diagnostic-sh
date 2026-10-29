@@ -96,6 +96,46 @@
     ]
   },
   {
+    "name": "quoted declarations and pattern words stay opaque inside a recovery region",
+    "source": "cat > ) \"export\" x=~${v:bad} [\"\"^a] [a\"/\"b]; cat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 4,
+          "end": 43
+        },
+        "range": [6, 43],
+        "fault": {
+          "kind": "invalid_redirection_target",
+          "range": [6, 7]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [43, 43]
+        },
+        "fragments": [[7, 43]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 49,
+          "end": 50
+        },
+        "range": [50, 50],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [50, 50]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [50, 50]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
     "name": "redirection target missing at EOF",
     "source": "cat >",
     "expected": [
@@ -2962,8 +3002,138 @@
     "expected": []
   },
   {
+    "name": "quoted and escaped declaration names and forwarding words are accepted",
+    "source": "\"export\" X=~; \\readonly Y=~/bin; ex\"port\" Z=~; ''export X=~\n$'\\x65xport' X=~; $'\\162eadonly' Y=~; \"command\" 'readonly' Z=~\ncom''mand >out command $'\\x65xport' X=~\n\"command\" <<END \"export\" X=~\nbody\nEND\n",
+    "expected": []
+  },
+  {
+    "name": "command options and dynamic utility names remain valid ordinary words",
+    "source": "command -p \"export\" X=~; command -- \"readonly\" Y=~\n\"$cmd\" X=~; command \"${cmd:-export}\" Y=~\n$(printf export) X=~; `printf readonly` Y=~\n",
+    "expected": []
+  },
+  {
+    "name": "a parameter fault after tilde in a quoted declaration resumes before later arguments",
+    "source": "\"export\" x=~${v:bad} y=~; cat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 12,
+          "end": 20
+        },
+        "range": [16, 19],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [16, 17]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [19, 19]
+        },
+        "fragments": [[17, 19]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 30,
+          "end": 31
+        },
+        "range": [31, 31],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [31, 31]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [31, 31]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "a dynamic utility name retains its parameter fault and the following command fault",
+    "source": "\"${cmd:bad}\" x=~; cat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 1,
+          "end": 11
+        },
+        "range": [7, 10],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [7, 8]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [10, 10]
+        },
+        "fragments": [[8, 10]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 22,
+          "end": 23
+        },
+        "range": [23, 23],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [23, 23]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [23, 23]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "a forwarded dollar-quoted name retains its escape fault and the following command fault",
+    "source": "\"command\" $'read\\c\\qonly' x=~; cat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "dollar_single_quote_escape",
+          "start": 16,
+          "end": 20
+        },
+        "range": [16, 20],
+        "fault": {
+          "kind": "invalid_control_escape",
+          "range": [16, 20]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [20, 20]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 35,
+          "end": 36
+        },
+        "range": [36, 36],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [36, 36]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [36, 36]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
     "name": "utility operand constraints do not become source syntax faults",
-    "source": "for i in \"$@\"; do break 99; done; export 1bad; shift -2; command missing\n",
+    "source": "for i in \"$@\"; do break 99; done; export 1bad; shift -2; command missing\n\"export\" 1bad x+=1; \\readonly 1=bad; \"command\" \"export\" \"x=bad\"\n",
     "expected": []
   },
   {
@@ -8294,13 +8464,13 @@
     "expected": []
   },
   {
-    "name": "normal pattern_words: pattern nodes retain source shape without asserting runtime validity",
-    "source": "printf a[b/c]d [[:not_a_posix_name:]]\n",
+    "name": "normal pattern_words: static slashes and unknown classes do not cause syntax faults",
+    "source": "printf a[b/c]d [[:not_a_posix_name:]]\n: [a*/b[xy] [a*\"/\"b[xy] [a*\\/b[xy] [a*$'\\x2f'b[xy] [a*/b?] [a*]/b[xy]\n",
     "expected": []
   },
   {
     "name": "normal case_patterns: case alternatives reuse pattern source nodes",
-    "source": "case \"$value\" in\n  (src/*.c | file?.[ch]) printf match ;;\n  '*' | \\? | \"[abc]\") printf quoted ;;\n  ${prefix}*) printf expanded ;;\nesac\n",
+    "source": "case \"$value\" in\n  (src/*.c | file?.[ch]) printf match ;;\n  '*' | \\? | \"[abc]\") printf quoted ;;\n  ${prefix}*) printf expanded ;;\nesac\ncase x in [''^a]|[^]]|[^]|[a/b]|[a\"/\"b]|[a\\/b]|[a$'\\x2f'b]) :;; esac\n",
     "expected": []
   },
   {
@@ -8334,8 +8504,8 @@
     "expected": []
   },
   {
-    "name": "normal bracket_expressions: bracket expressions expose matching-list source structure",
-    "source": "printf [a] [abc] [!a-z] []-] [a-zA-Z] [^a] [*?] [a-*] [*-z] [[:alpha:]] [[.ch.]] [[=a=]] [[.a.]-[.z.]]\n",
+    "name": "normal bracket_expressions: bracket members and negation spellings are accepted",
+    "source": "printf [a] [abc] [!a-z] []-] [a-zA-Z] [^a] [*?] [a-*] [*-z] [[:alpha:]] [[.ch.]] [[=a=]] [[.a.]-[.z.]]\n: [''^a] [\"\"!a] [^]] [^] [!'']] [^\"\"]] [\\^a] ['^'a] [\"^\"a] [a^] [!^a]\n",
     "expected": []
   },
   {
@@ -8370,7 +8540,7 @@
   },
   {
     "name": "normal bracket_expressions: bracket expressions retain nested expansion source",
-    "source": "printf [${chars}] [$(printf x)] [$((1 + 1))] [a\"$value\"b] [a\"$(printf ']')\"b]\n",
+    "source": "printf [${chars}] [$(printf x)] [$((1 + 1))] [a\"$value\"b] [a\"$(printf ']')\"b]\necho \"${value#[''^a]}\" ${value#[^]]} \"${value#[^]}\" \"${value#[a\"/\"b]}\" ${value#[a\\/b]} ${value#[a$'\\x2f'b]}\n",
     "expected": []
   },
   {
@@ -8465,7 +8635,7 @@
   },
   {
     "name": "normal bracket_expressions: pattern operators remain source after an incomplete bracket opener",
-    "source": "echo [* [?\n",
+    "source": "echo [* [?\n: [a* [a\\]* [a\"]\"* [a]*[ [a\"*\" a*[/b*\n",
     "expected": []
   },
   {
@@ -8534,7 +8704,150 @@
     "expected": []
   },
   {
-    "name": "normal tilde_expansions: parameter tilde users retain shell separators after structured source",
+    "name": "empty quotes before caret do not hide a subsequent unfinished quote",
+    "source": "echo [''^\"a",
+    "expected": [
+      {
+        "owner": {
+          "kind": "double_quoted",
+          "start": 9,
+          "end": 11
+        },
+        "range": [11, 11],
+        "fault": {
+          "kind": "double_quote_gap",
+          "range": [11, 11]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [11, 11]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "an incomplete filename bracket after a quoted slash retains its parameter fault",
+    "source": "echo [a*\"/\"${v:bad}\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 11,
+          "end": 19
+        },
+        "range": [15, 18],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [15, 16]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [18, 18]
+        },
+        "fragments": [[16, 18]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 24,
+          "end": 25
+        },
+        "range": [25, 25],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [25, 25]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [25, 25]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "a caret case pattern retains its parameter fault and resumes after the clause",
+    "source": "case x in [''^${v:bad}]) :;; esac\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 14,
+          "end": 22
+        },
+        "range": [18, 21],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [18, 19]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [21, 21]
+        },
+        "fragments": [[19, 21]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 38,
+          "end": 39
+        },
+        "range": [39, 39],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [39, 39]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [39, 39]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "a quoted parameter pattern containing a slash retains an inner parameter fault",
+    "source": "echo \"${x#[a\"/\"${v:bad}]}\"\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 15,
+          "end": 23
+        },
+        "range": [19, 22],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [19, 20]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [22, 22]
+        },
+        "fragments": [[20, 22]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 31,
+          "end": 32
+        },
+        "range": [32, 32],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [32, 32]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [32, 32]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "normal tilde_expansions: quoted and dynamic parameter words retain tilde source and shell separators",
     "source": "echo ${x:-~'a' b} ${x#~$u;b} ${x:-~$(echo a)\nb}\n",
     "expected": []
   },
@@ -8544,8 +8857,8 @@
     "expected": []
   },
   {
-    "name": "normal tilde_expansions: tilde users retain every structured candidate before the formal delimiter",
-    "source": "printf ~\"$name/quoted\"/tail ~'single/name'/tail ~$'dollar/name'/tail ~\\/escaped/tail ~$name/tail ~${name}/tail ~$(printf command/name)/tail ~$((1 / 2))/tail ~`printf backquote/name`/tail ~日本%+/tail\nPATH=~$(printf first/name):~\"second/name\"/bin command\nprintf ${value:-~$(printf parameter/name)/tail} ${value:-~$(printf terminal/name)}\n",
+    "name": "normal tilde_expansions: quoted and dynamic tilde prefixes remain ordinary word source",
+    "source": "printf ~\"$name/quoted\"/tail ~'single/name'/tail ~$'dollar/name'/tail ~\\/escaped/tail ~$name/tail ~${name}/tail ~$(printf command/name)/tail ~$((1 / 2))/tail ~`printf backquote/name`/tail ~日本%+/tail\nPATH=~$(printf first/name):~\"second/name\"/bin command\nprintf ${value:-~$(printf parameter/name)/tail} ${value:-~$(printf terminal/name)}\nprintf ~'' ~\"\" ~ro\"ot\" ~\\root ~ro\\\not ~/\"$x\"\n",
     "expected": []
   },
   {
@@ -8560,7 +8873,7 @@
   },
   {
     "name": "normal tilde_expansions: assignment tildes take precedence over complete and incomplete bracket source",
-    "source": "A=[a:~/x] B=[[:~user]/x] C=[a:~/x D=[a\\:~/x]\n",
+    "source": "A=[a:~/x] B=[[:~user]/x] C=[a:~/x D=[a\\:~/x]\nx=[a:~\"b\"] y=[a:~${name}]\n",
     "expected": []
   },
   {
@@ -8572,6 +8885,29 @@
     "name": "normal tilde_expansions: encoded continuations end argument and assignment tilde users",
     "source": ": `: ~user\\\\\n :`\n: `A=~user\\\\\n :`\n",
     "expected": []
+  },
+  {
+    "name": "a quote in a tilde candidate still owns its missing ending",
+    "source": "echo ~\"$x",
+    "expected": [
+      {
+        "owner": {
+          "kind": "double_quoted",
+          "start": 6,
+          "end": 9
+        },
+        "range": [9, 9],
+        "fault": {
+          "kind": "double_quote_gap",
+          "range": [9, 9]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [9, 9]
+        },
+        "fragments": []
+      }
+    ]
   },
   {
     "name": "empty parameter preserves the real closing brace",
@@ -14040,6 +14376,279 @@
         "boundary": {
           "kind": "recovery_resume",
           "range": [54, 54]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "arithmetic quote source does not create shell quote gaps",
+    "source": "echo $(( \"y\" = 1 )) $((1+\"2\")) $((1+'2')) $((1+')) $((1+\")) \"$(('1'+2))\"\n",
+    "expected": []
+  },
+  {
+    "name": "arithmetic quote source retains nested expansion and substitution boundaries",
+    "source": "echo $((\"$x\"+('1'+${y:-\"2\"})+$(printf '3')+`printf '4'`+$((1+\"5\"))))\necho \"${x:-$(('1'))}\" $(echo $((\"1\"))) `echo $(('1'))`\ncat <<END\n$((\"1\"))\nEND\n",
+    "expected": []
+  },
+  {
+    "name": "arithmetic quote source retains numeric fragments without evaluating them",
+    "source": "echo $((\"08\")) $((\"0x\")) $((\"1\"++)) $((++'1')) $((\"1\"+)) $((\"1\" 2))\n",
+    "expected": []
+  },
+  {
+    "name": "arithmetic quote source at EOF reports its arithmetic ending gap",
+    "source": "echo $((\"1",
+    "expected": [
+      {
+        "owner": {
+          "kind": "arithmetic_expansion",
+          "start": 5,
+          "end": 10
+        },
+        "range": [10, 10],
+        "fault": {
+          "kind": "arithmetic_ending_gap",
+          "range": [10, 10]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [10, 10]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "arithmetic quote source at one closing parenthesis reports its arithmetic ending gap",
+    "source": "echo $((\"1\")",
+    "expected": [
+      {
+        "owner": {
+          "kind": "arithmetic_expansion",
+          "start": 5,
+          "end": 12
+        },
+        "range": [12, 12],
+        "fault": {
+          "kind": "arithmetic_ending_gap",
+          "range": [12, 12]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [12, 12]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "arithmetic quote source preserves a parameter fault and the following command fault",
+    "source": "echo $((\"1\"+${x:bad}))\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 12,
+          "end": 20
+        },
+        "range": [16, 19],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [16, 17]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [19, 19]
+        },
+        "fragments": [[17, 19]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 27,
+          "end": 28
+        },
+        "range": [28, 28],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [28, 28]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [28, 28]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "arithmetic quote source preserves an unfinished nested command substitution",
+    "source": "echo $((\"1\"+$(echo",
+    "expected": [
+      {
+        "owner": {
+          "kind": "command_substitution",
+          "start": 12,
+          "end": 18
+        },
+        "range": [18, 18],
+        "fault": {
+          "kind": "substitution_ending_gap",
+          "range": [18, 18]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [18, 18]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "command syntax with quotes still falls back from arithmetic",
+    "source": "echo $((\"echo\" hi; :))\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 27,
+          "end": 28
+        },
+        "range": [28, 28],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [28, 28]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [28, 28]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "arithmetic single quote delimiter preserves body faults and resumes",
+    "source": "cat <<$((1+'2'))\n${x:bad}\n$((1+'2'))\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 17,
+          "end": 25
+        },
+        "range": [21, 24],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [21, 22]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [24, 24]
+        },
+        "fragments": [[22, 24]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 41,
+          "end": 42
+        },
+        "range": [42, 42],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [42, 42]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [42, 42]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "arithmetic single quote delimiter with outer quotes suppresses body expansion and resumes",
+    "source": "cat <<\"$((1+'2'))\"\n${x:bad}\n$((1+'2'))\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 43,
+          "end": 44
+        },
+        "range": [44, 44],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [44, 44]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [44, 44]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "arithmetic double quote delimiter preserves body faults and resumes",
+    "source": "cat <<$((1+\"2\"))\n${x:bad}\n$((1+\"2\"))\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 17,
+          "end": 25
+        },
+        "range": [21, 24],
+        "fault": {
+          "kind": "parameter_operator_error",
+          "range": [21, 22]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [24, 24]
+        },
+        "fragments": [[22, 24]]
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 41,
+          "end": 42
+        },
+        "range": [42, 42],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [42, 42]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [42, 42]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "arithmetic double quote delimiter with outer quotes suppresses body expansion and resumes",
+    "source": "cat <<\"$((1+\"2\"))\"\n${x:bad}\n$((1+\"2\"))\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 43,
+          "end": 44
+        },
+        "range": [44, 44],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [44, 44]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [44, 44]
         },
         "fragments": []
       }

@@ -2426,12 +2426,21 @@ arithmetic_valid(struct Plan *plan, const struct Text *content, bool open) {
     plan->failed = true;
     return false;
   }
-  for (size_t i = 0; i < content->count; i++)
-    values[i] = content->units[i].value;
+  bool has_quote = false, arithmetic_characters = true;
+  for (size_t i = 0; i < content->count; i++) {
+    int32_t c = content->units[i].value;
+    values[i] = c;
+    if (c == '\'' || c == '"') has_quote = true;
+    else if (c != -1 && arithmetic_lex(LEX_START, c) == LEX_INVALID)
+      arithmetic_characters = false;
+  }
   size_t length = content->count;
   // An EOF continuation acts as an expansion hole.
   if (open) values[length++] = -1;
-  enum ArithmeticValidation validation = validate_arithmetic(values, length);
+  enum ArithmeticValidation validation = has_quote
+    ? arithmetic_characters ? ARITHMETIC_VALIDATION_VALID
+                            : ARITHMETIC_VALIDATION_INVALID
+    : validate_arithmetic(values, length);
   ts_free(values);
   plan->failed |= validation == ARITHMETIC_VALIDATION_RESOURCE_FAILURE;
   return validation == ARITHMETIC_VALIDATION_VALID;
