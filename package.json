@@ -1,6 +1,6 @@
 {
   "name": "@konomanoasa/tree-sitter-diagnostic-sh",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "type": "module",
   "description": "Tree-sitter grammar for diagnostics of POSIX sh.",
   "license": "MIT",
