@@ -3,6 +3,78 @@ import { test } from "node:test";
 import { diagnosticStructure } from "./support/cst.js";
 import { parse } from "./support/parser.js";
 import cases from "./support/parser-cases.json" with { type: "json" };
+import { workloads } from "./support/workloads.js";
+
+for (const [word, delimiter, quoted] of [
+  [`\${}`, `\${}`, false],
+  [`\${a.b}`, `\${a.b}`, false],
+  [`\${aé}`, `\${aé}`, false],
+  [`\${#x:}`, `\${#x:}`, false],
+  [`\${.}`, `\${}`, false],
+  [`\${#.}`, `\${#}`, false],
+  [`\${a b}`, `\${a b}`, false],
+  ["$(if)", "$(if)", false],
+  ["$(;)", "$(;)", false],
+  ["$(a|)", "$(a|)", false],
+  ["`if`", "`if`", false],
+  ["$(())", "$(())", false],
+  ["$((1+))", "$((1+))", false],
+  ["$((: $x))", "$((: $x))", false],
+  ["$(((1+)))", "$(((1+)))", false],
+  [`\${a.b:-"x"}`, `\${a.b:-x}`, true],
+]) {
+  for (const [context, prefix, suffix, tabs, outerQuoted] of [
+    ["plain", "cat <<", "", "", false],
+    ["quoted", 'cat <<"', '"', "", true],
+    ["tab-stripped", "cat <<-", "", "\t", false],
+    ["substitution", "echo $(cat <<", "", "", false],
+  ]) {
+    test(`unexpanded delimiter ${JSON.stringify(word)} bounds its ${context} body before the next fault`, () => {
+      const body = quoted || outerQuoted ? `\${x:bad}` : "$probe";
+      const source = `${prefix}${word}${suffix}\n${tabs}${body}\n${tabs}${delimiter}\n${context === "substitution" ? ")\n" : ""}cat >\n`;
+      const gap = Buffer.byteLength(source) - 1;
+      assert.deepEqual(
+        parse(source).issues.map(({ fault }) => fault),
+        [{ kind: "redirection_target_gap", range: [gap, gap] }],
+      );
+    });
+  }
+}
+
+for (const word of [`\${`, "$(if", "$((1+)", "'END", '"END', "`if"]) {
+  test(`an unclosed delimiter ${JSON.stringify(word)} belongs to its word`, () => {
+    const source = `cat <<${word}`;
+    const end = Buffer.byteLength(source);
+    assert.deepEqual(parse(source).issues, [
+      {
+        owner: { kind: "word", range: [6, end] },
+        range: [end, end],
+        fault: {
+          kind: "here_document_delimiter_ending_gap",
+          range: [end, end],
+        },
+        boundary: { kind: "recovery_eof", range: [end, end] },
+        fragments: [],
+      },
+    ]);
+  });
+}
+
+test("C delimiter bytes keep unmatched quoted content through EOF", () => {
+  assert.deepEqual(
+    parse(`cat <<"\${é}"\n\${x:bad}\n\${é}\ncat >\n`).issues,
+    [],
+  );
+});
+
+test("an empty parameter delimiter inside a backquote bounds the body", () => {
+  const source = `: \`cat <<\${}\n$probe\n\${}\n\`\ncat >\n`;
+  const gap = Buffer.byteLength(source) - 1;
+  assert.deepEqual(
+    parse(source).issues.map(({ fault }) => fault),
+    [{ kind: "redirection_target_gap", range: [gap, gap] }],
+  );
+});
 
 for (const [name, word] of [
   ["single quote", "$'text'"],
@@ -970,4 +1042,15 @@ for (const context of contexts) {
       assert.deepEqual(actual.issues, []);
     });
   }
+}
+
+for (const { name, source } of workloads) {
+  if (
+    !name.includes("compounds-") &&
+    !name.startsWith("command-substitutions-")
+  )
+    continue;
+  test(`${name} completes parsing and preserves nested source through EOF`, () => {
+    parse(source);
+  });
 }

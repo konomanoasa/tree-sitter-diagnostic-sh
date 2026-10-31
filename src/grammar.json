@@ -1683,6 +1683,10 @@
                   },
                   {
                     "type": "SYMBOL",
+                    "name": "here_document_delimiter_ending_gap"
+                  },
+                  {
+                    "type": "SYMBOL",
                     "name": "here_document_ending_gap"
                   },
                   {
@@ -2008,6 +2012,10 @@
                   {
                     "type": "SYMBOL",
                     "name": "invalid_here_document_delimiter"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "here_document_delimiter_ending_gap"
                   },
                   {
                     "type": "SYMBOL",
@@ -2482,6 +2490,10 @@
     {
       "type": "SYMBOL",
       "name": "invalid_here_document_delimiter"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "here_document_delimiter_ending_gap"
     },
     {
       "type": "SYMBOL",

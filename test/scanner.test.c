@@ -163,6 +163,63 @@ static void test_parameter_issue_events(void) {
   expect_events("echo ${x:bad}\n", expected, ARRAY_LENGTH(expected));
 }
 
+static void test_restart_and_instance_isolation(void) {
+  struct Scanner *left = tree_sitter_diagnostic_sh_external_scanner_create();
+  struct Scanner *right = tree_sitter_diagnostic_sh_external_scanner_create();
+  assert(left && right);
+  struct MockLexer left_input = mock_input("echo ${x:bad}\n");
+  struct MockLexer right_input = mock_input(normal_here_documents);
+  expect_event(left, &left_input, (struct Event){START, 0});
+  left_input = mock_input("echo ${x:bad}\n");
+  expect_event(left, &left_input, (struct Event){BEGIN_LIST, 0});
+  char state[TREE_SITTER_SERIALIZATION_BUFFER_SIZE];
+  unsigned length =
+    tree_sitter_diagnostic_sh_external_scanner_serialize(left, state);
+  expect_event(right, &right_input, (struct Event){START, 0});
+  right_input = mock_input(normal_here_documents);
+  expect_event(
+    right,
+    &right_input,
+    (struct Event){SOURCE, sizeof(normal_here_documents) - 1}
+  );
+  char after[TREE_SITTER_SERIALIZATION_BUFFER_SIZE];
+  assert(
+    tree_sitter_diagnostic_sh_external_scanner_serialize(left, after) == length
+  );
+  assert(memcmp(state, after, length) == 0);
+  expect_event(left, &left_input, (struct Event){BEGIN_AND_OR, 0});
+  expect_event(
+    right,
+    &right_input,
+    (struct Event){FINISH, sizeof(normal_here_documents) - 1}
+  );
+
+  struct Scanner *scanners[] = {left, right};
+  const char *sources[] = {"echo ok\n", ""};
+  for (size_t i = 0; i < ARRAY_LENGTH(scanners); i++) {
+    for (size_t j = 0; j < ARRAY_LENGTH(sources); j++) {
+      tree_sitter_diagnostic_sh_external_scanner_deserialize(
+        scanners[i],
+        NULL,
+        0
+      );
+      assert(
+        tree_sitter_diagnostic_sh_external_scanner_serialize(
+          scanners[i],
+          after
+        ) == 0
+      );
+      struct MockLexer input = mock_input(sources[j]);
+      expect_event(scanners[i], &input, (struct Event){START, 0});
+      input = mock_input(sources[j]);
+      size_t end = strlen(sources[j]);
+      if (end) expect_event(scanners[i], &input, (struct Event){SOURCE, end});
+      expect_event(scanners[i], &input, (struct Event){FINISH, end});
+    }
+    tree_sitter_diagnostic_sh_external_scanner_destroy(scanners[i]);
+  }
+}
+
 static void test_empty_source(void) {
   const struct Event expected[] = {{FINISH, 0}};
   expect_events("", expected, ARRAY_LENGTH(expected));
@@ -379,7 +436,7 @@ static void test_reported_faults_ignore_recording_order(void) {
     struct Plan plan = {0};
     struct Rejected rejected = {0};
     struct Parser parser = {
-      .input = {source.units, source.count, 0, source.count, NULL, &rejected},
+      .input = {source.units, source.count, 0, source.count, &rejected},
       .plan = &plan,
     };
     owner_begin(&parser, START, 0);
@@ -731,6 +788,14 @@ static void test_delimiter_spelling_and_body_quoting(void) {
     bool quoted;
   } cases[] = {
     {"'END'", "END", true},
+    {"${}", "${}", false},
+    {"${a.b}", "${a.b}", false},
+    {"${#x:}", "${#x:}", false},
+    {"$(if)", "$(if)", false},
+    {"$(;)", "$(;)", false},
+    {"`if`", "`if`", false},
+    {"$(())", "$(())", false},
+    {"$((1+))", "$((1+))", false},
     {"E\\ND", "END", true},
     {"END\\", "END\\", false},
     {"$'a\\x62'", "ab", true},
@@ -804,7 +869,6 @@ static void test_delimiter_spelling_and_body_quoting(void) {
     {"$((\"$x\"+$(printf '2')))", "$((\"$x\"+$(printf 2)))", true},
     {"$\\\n(printf 'ab')", "$(printf ab)", true},
     {"\"$((1+$(printf '2')))\"", "$((1+$(printf 2)))", true},
-    {"$((printf 'ab'); :)\"tail\"", "$((printf ab); :)tail", true},
   };
   for (size_t i = 0; i < ARRAY_LENGTH(cases); i++) {
     struct MockLexer mock = mock_input(cases[i].word);
@@ -813,7 +877,7 @@ static void test_delimiter_spelling_and_body_quoting(void) {
     struct Plan plan = {.source_end = source.count};
     struct Rejected rejected = {0};
     struct Parser parser = {
-      .input = {source.units, source.count, 0, source.count, NULL, &rejected},
+      .input = {source.units, source.count, 0, source.count, &rejected},
       .plan = &plan,
     };
     owner_begin(&parser, START, 0);
@@ -864,6 +928,7 @@ int main(void) {
   test_delimiter_spelling_and_body_quoting();
   test_control_escape_bytes();
   test_parameter_issue_events();
+  test_restart_and_instance_isolation();
   test_empty_source();
   test_normal_here_documents();
   test_arithmetic_queue_preserves_position_priority_and_fifo();

@@ -1,20 +1,26 @@
 {
   "name": "@konomanoasa/tree-sitter-diagnostic-sh",
   "version": "0.7.0",
-  "type": "module",
   "description": "Tree-sitter grammar for diagnostics of POSIX sh.",
   "license": "MIT",
   "repository": "git+https://github.com/konomanoasa/tree-sitter-diagnostic-sh.git",
+  "type": "module",
   "files": [
     "Cargo.toml",
     "PARSING_POLICY.md",
+    "bindings/python/*.c",
+    "bindings/python/*.py",
+    "bindings/python/*.pyi",
+    "bindings/python/py.typed",
     "bindings/rust/*.rs",
     "grammar.js",
+    "pyproject.toml",
+    "setup.py",
     "src/*.c",
+    "src/*.h",
     "src/*.json",
     "src/tree_sitter/*.h",
     "test/bindings.test.rs",
-    "test/support/parser-cases.json",
     "tree-sitter.json"
   ],
   "publishConfig": {
@@ -25,10 +31,9 @@
     "check": "biome check . && tsc",
     "format": "biome format --write .",
     "generate": "npm run tree-sitter -- generate-all",
-    "test": "node --test --test-concurrency=1 test/cst.test.js test/parser.test.js",
+    "test": "node --test --test-concurrency=1 test/build.test.js test/cst.test.js test/incremental.test.js test/parser.test.js && node scripts/check-c.js --test",
     "test:performance": "node --test test/performance.test.js",
     "test:sanitize": "node scripts/check-c.js --sanitize",
-    "test:scanner": "node scripts/check-c.js",
     "tree-sitter": "node scripts/tree-sitter.js"
   },
   "devDependencies": {

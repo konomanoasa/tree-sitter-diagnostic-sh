@@ -24,9 +24,18 @@ before(() => {
 after(() => runner?.close());
 
 export function parse(input) {
-  const source = Array.isArray(input) ? Buffer.from(input) : input;
-  const path = join(runner.directory, "source.sh");
-  writeFileSync(path, source);
+  return parseSequence([input])[0];
+}
+
+export function parseSequence(inputs) {
+  const sources = inputs.map((input) =>
+    Array.isArray(input) ? Buffer.from(input) : input,
+  );
+  const paths = sources.map((source, index) => {
+    const path = join(runner.directory, `source-${index}.sh`);
+    writeFileSync(path, source);
+    return path;
+  });
   const result = runner.run(
     [
       "parse",
@@ -38,7 +47,7 @@ export function parse(input) {
       "--json-summary",
       "--encoding",
       "utf8",
-      path,
+      ...paths,
     ],
     { timeout: parseTimeoutMs },
   );
@@ -48,12 +57,22 @@ export function parse(input) {
   const start = result.stdout.indexOf('{\n  "parse_summaries":');
   assert.notEqual(start, -1, result.stdout + result.stderr);
   const { parse_summaries: summaries } = JSON.parse(result.stdout.slice(start));
-  assert.equal(summaries.length, 1);
-  assert.equal(summaries[0].bytes, Buffer.byteLength(source));
-  assert.deepEqual(summaries[0].end, sourceEndPoint(source));
-  const actual = parseCst(result.stdout.slice(0, start), source);
-  assert.equal(actual.hasError, false);
-  assert.deepEqual(actual.native, []);
-  assertCstSourceContract(actual.tree, source);
-  return actual;
+  assert.equal(summaries.length, sources.length);
+  const outputs = [];
+  for (const line of result.stdout.slice(0, start).split("\n")) {
+    if (/^[0-9]+:[0-9]+ +- +[0-9]+:[0-9]+ +program$/.test(line))
+      outputs.push("");
+    if (outputs.length) outputs[outputs.length - 1] += `${line}\n`;
+  }
+  assert.equal(outputs.length, sources.length);
+  return sources.map((source, index) => {
+    assert.equal(summaries[index].successful, true);
+    assert.equal(summaries[index].bytes, Buffer.byteLength(source));
+    assert.deepEqual(summaries[index].end, sourceEndPoint(source));
+    const actual = parseCst(outputs[index], source);
+    assert.equal(actual.hasError, false);
+    assert.deepEqual(actual.native, []);
+    assertCstSourceContract(actual.tree, source);
+    return actual;
+  });
 }

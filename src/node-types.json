@@ -3929,6 +3929,10 @@
             "named": true
           },
           {
+            "type": "here_document_delimiter_ending_gap",
+            "named": true
+          },
+          {
             "type": "here_document_delimiter_gap",
             "named": true
           },
@@ -4656,6 +4660,10 @@
   },
   {
     "type": "function_parameter_error",
+    "named": true
+  },
+  {
+    "type": "here_document_delimiter_ending_gap",
     "named": true
   },
   {

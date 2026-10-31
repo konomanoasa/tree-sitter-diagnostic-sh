@@ -8,7 +8,6 @@ import {
 } from "./support/cst.js";
 import { parse } from "./support/parser.js";
 import cases from "./support/parser-cases.json" with { type: "json" };
-import { workloads } from "./support/workloads.js";
 
 test("CST decoding retains UTF-8 ranges, direct fields and issue fragments", () => {
   const source = "é)\n";
@@ -68,6 +67,41 @@ test("CST decoding retains UTF-8 ranges, direct fields and issue fragments", () 
     },
   });
   assertCstSourceContract(actual.tree, source);
+});
+
+test("C parsing conditions preserve UTF-8 source and faults independently of the process locale", (t) => {
+  const originalLocale = process.env.LC_ALL;
+  t.after(() => {
+    if (originalLocale === undefined) delete process.env.LC_ALL;
+    else process.env.LC_ALL = originalLocale;
+  });
+  for (const { name, source, faults } of [
+    {
+      name: "ASCII names with UTF-8 words, patterns and a quoted delimiter",
+      source:
+        'A_1=é\nprintf "$A_1" "$é" [é] [[:alpha:]]\ncat <<\'é😀\'\nbody\né😀\n',
+      faults: [],
+    },
+    {
+      name: "a non-ASCII parameter name in an ordinary word",
+      source: `printf \${é}\n`,
+      faults: [{ kind: "invalid_parameter_name", range: [9, 11] }],
+    },
+  ]) {
+    let baseline;
+    for (const locale of ["C", "C.UTF-8"]) {
+      process.env.LC_ALL = locale;
+      const description = `${name}: ${locale}`;
+      const actual = parse(source);
+      assert.deepEqual(
+        actual.issues.map(({ fault }) => fault),
+        faults,
+        description,
+      );
+      baseline ??= actual;
+      assert.deepEqual(actual, baseline, description);
+    }
+  }
 });
 
 test("CST decoding distinguishes recovery markers from displayed source", () => {
@@ -187,8 +221,15 @@ test("every public fault has an explicit CST expectation", () => {
   assert.deepEqual([...covered].sort(), faults.map((node) => node.type).sort());
 });
 
-for (const { name, source } of workloads) {
-  test(`diagnostic_sh: ${name} preserves source through EOF`, () => {
-    parse(source);
+const sourceRepetitions = 32;
+for (const { name, unit } of [
+  {
+    name: "normal commands",
+    unit: 'for i in a b; do printf "%s\\n" "犬"; done\n',
+  },
+  { name: "damaged commands", unit: `cat > ) @; echo \${x:bad}; echo ok\n` },
+]) {
+  test(`${name} preserve repeated source through EOF`, () => {
+    parse(unit.repeat(sourceRepetitions));
   });
 }

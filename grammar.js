@@ -1,104 +1,32 @@
-const owners = [
-  "list",
-  "compound_list",
-  "and_or",
-  "pipeline",
-  "simple_command",
-  "word",
-  "subshell",
-  "brace_group",
-  "if_clause",
-  "else_part",
-  "for_clause",
-  "while_clause",
-  "until_clause",
-  "do_group",
-  "case_clause",
-  "case_item",
-  "function_definition",
-  "io_redirect",
-  "here_document_body",
-  "single_quoted",
-  "double_quoted",
-  "dollar_single_quoted",
-  "escaped_character",
-  "dollar_single_quote_escape",
-  "parameter_expansion",
-  "arithmetic_expansion",
-  "command_substitution",
-  "backquote_substitution",
-];
+import tokens from "./src/tokens.json" with { type: "json" };
 
-const faults = [
-  "invalid_encoding",
-  "nul_character",
-  "unmatched_parenthesis",
-  "unmatched_brace",
-  "unexpected_then",
-  "unexpected_elif",
-  "unexpected_else",
-  "unmatched_fi",
-  "unexpected_do",
-  "unmatched_done",
-  "unmatched_esac",
-  "unexpected_in",
-  "unexpected_semicolon",
-  "unexpected_ampersand",
-  "unexpected_pipe",
-  "unexpected_and_if",
-  "unexpected_or_if",
-  "unexpected_case_separator",
-  "unexpected_case_fallthrough",
-  "unexpected_negation",
-  "command_gap",
-  "separator_gap",
-  "redirection_target_gap",
-  "invalid_redirection_target",
-  "here_document_delimiter_gap",
-  "invalid_here_document_delimiter",
-  "here_document_ending_gap",
-  "for_name_gap",
-  "invalid_for_name",
-  "for_separator_gap",
-  "invalid_for_header",
-  "invalid_for_separator",
-  "then_gap",
-  "fi_gap",
-  "do_gap",
-  "invalid_do",
-  "done_gap",
-  "in_gap",
-  "esac_gap",
-  "case_word_gap",
-  "invalid_case_word",
-  "invalid_in",
-  "case_pattern_gap",
-  "invalid_case_pattern",
-  "case_pattern_separator_error",
-  "parenthesis_gap",
-  "brace_gap",
-  "special_builtin_function_name",
-  "function_body_gap",
-  "invalid_function_body",
-  "function_parameter_error",
-  "single_quote_gap",
-  "double_quote_gap",
-  "dollar_quote_gap",
-  "incomplete_escape",
-  "invalid_control_escape",
-  "parameter_name_gap",
-  "invalid_parameter_name",
-  "parameter_operator_gap",
-  "parameter_operator_error",
-  "parameter_length_suffix_error",
-  "parameter_word_gap",
-  "parameter_ending_gap",
-  "arithmetic_ending_gap",
-  "substitution_ending_gap",
-  "backquote_gap",
-  "undefined_backquote_quote",
-  "undefined_backquote_substitution",
-];
+const tokenNames = new Set();
+const scannerSymbols = new Set();
+for (const { name, scanner, kind } of tokens) {
+  if (
+    typeof name !== "string" ||
+    !/^_?[a-z][a-z0-9_]*$/.test(name) ||
+    typeof scanner !== "string" ||
+    !/^[A-Z][A-Z0-9_]*$/.test(scanner) ||
+    scanner === "TOKEN_TYPE_COUNT" ||
+    tokenNames.has(name) ||
+    scannerSymbols.has(scanner) ||
+    (kind !== undefined && !["owner", "fault"].includes(kind)) ||
+    (kind === "owner" && !/^_begin_[a-z][a-z0-9_]*$/.test(name)) ||
+    (kind === "fault" && name.startsWith("_"))
+  ) {
+    throw new Error(`Invalid or duplicate external token ${name}`);
+  }
+  tokenNames.add(name);
+  scannerSymbols.add(scanner);
+}
+
+const owners = tokens
+  .filter(({ kind }) => kind === "owner")
+  .map(({ name }) => name.slice("_begin_".length));
+const faults = tokens
+  .filter(({ kind }) => kind === "fault")
+  .map(({ name }) => name);
 
 function contents($) {
   return repeat(
@@ -121,19 +49,7 @@ function issue($) {
 
 export default grammar({
   name: "diagnostic_sh",
-  externals: ($) => [
-    $._start,
-    $._finish,
-    ...owners.map((kind) => $[`_begin_${kind}`]),
-    $._end_owner,
-    $._begin_issue,
-    $._begin_unowned_issue,
-    $.source,
-    ...faults.map((kind) => $[kind]),
-    $.recovery_fragment,
-    $.recovery_resume,
-    $.recovery_eof,
-  ],
+  externals: ($) => tokens.map(({ name }) => $[name]),
   // Prevents lexer fallback from accepting EOF mid-input.
   extras: ($) => [$._unmatchable],
   rules: {

@@ -12,9 +12,10 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, isAbsolute, join } from "node:path";
+import tokens from "../src/tokens.json" with { type: "json" };
 import { grammars, packageName, root } from "./tree-sitter.js";
 
-const enumerators = {};
+const enumerators = new Map(tokens.map(({ name, scanner }) => [name, scanner]));
 const tokenCount = "TOKEN_TYPE_COUNT";
 
 const scannerDiagnosticArguments = [];
@@ -30,7 +31,7 @@ const variants = grammars.map((grammar) => {
   const includeDirectory = join(root, grammar.path, "src");
   const source = join(includeDirectory, "scanner.c");
   const headers = grammar.externalFiles
-    .filter((file) => file.endsWith(".h"))
+    .filter((file) => file.endsWith(".h") && file !== "src/tokens.h")
     .map((file) => join(root, file));
   return {
     name: grammar.name,
@@ -150,11 +151,7 @@ function checkExternalTokenOrder(clang, compilerArguments, variant, directory) {
     const token =
       external.type === "IMMEDIATE_TOKEN" ? external.content : external;
     const name = token.type === "SYMBOL" ? token.name : token.value;
-    const enumerator =
-      enumerators[name] ??
-      (token.type === "SYMBOL"
-        ? name.replace(/^_/, "").toUpperCase()
-        : undefined);
+    const enumerator = enumerators.get(name);
     if (enumerator === undefined) {
       throw new Error(
         `Missing scanner enumerator for ${JSON.stringify(external)}.`,
@@ -246,9 +243,11 @@ function main(arguments_) {
   if (
     arguments_.length > 1 ||
     (arguments_.length === 1 &&
-      !["--write", "--sanitize"].includes(arguments_[0]))
+      !["--write", "--test", "--sanitize"].includes(arguments_[0]))
   ) {
-    throw new Error("Usage: node scripts/check-c.js [--write | --sanitize]");
+    throw new Error(
+      "Usage: node scripts/check-c.js [--write | --test | --sanitize]",
+    );
   }
   const sources = [
     ...new Set([
@@ -257,19 +256,11 @@ function main(arguments_) {
       scannerContract,
     ]),
   ];
-  const { clang, clangd, clangFormat } = llvmCommands();
-  if (new Set([clang, clangd, clangFormat].map(versionMajor)).size !== 1)
-    throw new Error(
-      "clang, clangd, and clang-format must use the same LLVM major version.",
-    );
-
-  if (arguments_[0] === "--write") {
-    run(clangFormat, ["-i", ...sources]);
-    return;
-  }
+  const testOnly = ["--test", "--sanitize"].includes(arguments_[0]);
   const sanitizerArguments =
     arguments_[0] === "--sanitize"
       ? [
+          "-O1",
           "-fsanitize=address,undefined",
           "-fno-sanitize-recover=undefined",
           "-fno-omit-frame-pointer",
@@ -278,8 +269,29 @@ function main(arguments_) {
       : [];
   const directory = mkdtempSync(join(tmpdir(), `${packageName}-scanner-`));
   try {
-    checkDiagnostics(clang, clangd, directory);
-    run(clangFormat, ["--dry-run", "--Werror", ...sources]);
+    if (!testOnly) {
+      const { clang, clangd, clangFormat } = llvmCommands();
+      if (new Set([clang, clangd, clangFormat].map(versionMajor)).size !== 1)
+        throw new Error(
+          "clang, clangd, and clang-format must use the same LLVM major version.",
+        );
+      checkDiagnostics(clang, clangd, directory);
+      for (const variant of variants) {
+        if (variant.reuseAllocator)
+          checkAllocatorSymbols(clang, variant, directory);
+      }
+      run(clangFormat, [
+        ...(arguments_[0] === "--write" ? ["-i"] : ["--dry-run", "--Werror"]),
+        ...sources,
+      ]);
+      return;
+    }
+    const clang = findExecutable(
+      process.platform === "darwin"
+        ? "/opt/homebrew/opt/llvm/bin/clang"
+        : (process.env.CLANG ?? "clang"),
+      (process.env.PATH ?? "").split(delimiter),
+    );
     for (const standard of ["c99", "c17"]) {
       for (const variant of variants) {
         const compilerArguments = [
@@ -307,8 +319,6 @@ function main(arguments_) {
             `${variant.name}: scanner tests passed (${standard.toUpperCase()}${reuse ? ", reused allocator" : ""})\n`,
           );
         }
-        if (standard === "c17" && variant.reuseAllocator)
-          checkAllocatorSymbols(clang, variant, directory);
       }
     }
   } finally {

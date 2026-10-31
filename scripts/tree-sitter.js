@@ -10,6 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import tokens from "../src/tokens.json" with { type: "json" };
 
 const root = resolve(import.meta.dirname, "..");
 const packageName = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
@@ -167,6 +168,19 @@ function runChecked(runner, arguments_, options = { stdio: "inherit" }) {
   return resultStatus(runner.run(arguments_, options));
 }
 
+const tokenHeader = `/* Generated from tokens.json by npm run generate. */
+
+#ifndef TREE_SITTER_DIAGNOSTIC_SH_TOKENS_H_
+#define TREE_SITTER_DIAGNOSTIC_SH_TOKENS_H_
+
+enum TokenType {
+${tokens.map(({ scanner }) => `  ${scanner},`).join("\n")}
+  TOKEN_TYPE_COUNT,
+};
+
+#endif
+`;
+
 function generateParsers(outputRoot = root) {
   for (const grammar of grammars) {
     const output = join(outputRoot, grammar.path, "src");
@@ -188,6 +202,7 @@ function generateParsers(outputRoot = root) {
     if (status !== 0) {
       return status;
     }
+    writeFileSync(join(output, "tokens.h"), tokenHeader);
   }
   return 0;
 }
