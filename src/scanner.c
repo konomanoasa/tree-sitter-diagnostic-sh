@@ -104,7 +104,6 @@ struct Parser {
   uint32_t stops;
   bool resumed;
   size_t backquote_end;
-  int32_t closer;
 };
 struct Scanner {
   struct Event *events;
@@ -1427,8 +1426,7 @@ static size_t consumed_offset(const struct Input *input) {
 static struct Unit read_raw(struct Input *input) {
   if (input->position >= input->count)
     return (struct Unit){-1, input->end, input->end};
-  struct Unit unit = input->units[input->position++];
-  return unit;
+  return input->units[input->position++];
 }
 
 static struct Unit pop(struct Input *input) {
@@ -1752,8 +1750,6 @@ static void quoted(struct Parser *parser, struct Text *text, int32_t quote) {
     literal ? BEGIN_SINGLE_QUOTED : BEGIN_DOUBLE_QUOTED,
     offset(input)
   );
-  int32_t parent_closer = parser->closer;
-  parser->closer = quote;
   pop(input);
   while (!parser->plan->failed) {
     int32_t c = peek_quoted(input, literal);
@@ -1778,7 +1774,6 @@ static void quoted(struct Parser *parser, struct Text *text, int32_t quote) {
     if (literal || c != '\\' || !double_quote_escape(parser, text, unit))
       text_push(parser, text, unit);
   }
-  parser->closer = parent_closer;
   owner_end(parser, owner, consumed_offset(input));
   unnest(parser);
 }
@@ -1864,9 +1859,8 @@ static void parameter_operator(
 
 static struct ParameterHead parameter_head(struct Parser *parser) {
   struct Input *input = &parser->input;
-  struct ParameterHead head =
-    {{TOKEN_TYPE_COUNT, offset(input), 0, 0}, false, false};
-  head.fault.end = head.fault.at;
+  size_t at = offset(input);
+  struct ParameterHead head = {{TOKEN_TYPE_COUNT, at, at, 0}, false, false};
   bool hash = peek(input) == '#';
   bool length = hash && length_operator(input);
   if (length) pop(input);
@@ -1926,8 +1920,6 @@ parameter_word(struct Parser *parser, bool double_quoted, struct Fault *fault) {
 static void parameter(struct Parser *parser, bool double_quoted) {
   struct Input *input = &parser->input;
   pop(input);
-  int32_t parent_closer = parser->closer;
-  parser->closer = '}';
   struct ParameterHead head = parameter_head(parser);
   struct Fault fault = head.fault;
   if (head.operand && head.pattern) double_quoted = false;
@@ -1952,7 +1944,6 @@ static void parameter(struct Parser *parser, bool double_quoted) {
   if (peek(input) == '}') pop(input);
   else if (fault.kind == TOKEN_TYPE_COUNT)
     input_end_gap(parser, PARAMETER_ENDING_GAP);
-  parser->closer = parent_closer;
 }
 
 static int hex_value(int32_t c) {
@@ -2043,7 +2034,8 @@ read_dollar_escape(struct Input *input, struct Unit slash) {
       read_raw(input);
       if (c == '\\') read_raw(input);
       escape.count = encode_value(c, escape.bytes);
-      escape.bytes[0] = c == '?' ? 127 : escape.bytes[0] & 31;
+      escape.bytes[0] = escape.bytes[0] < 0x40 ? escape.bytes[0] | 0x40
+                                               : escape.bytes[0] & 0x1f;
     }
   } else {
     const char *keys = "abefnrtv\"'\\";
@@ -2101,14 +2093,14 @@ static void dollar_quote(struct Parser *parser, struct Text *text) {
 
 struct BackquoteInput {
   struct Input *input;
-  bool quoted, literal_next;
+  bool literal_next;
 };
 
 static struct Unit backquote_next(struct BackquoteInput *reader) {
   struct Input *input = reader->input;
   while (input->position < input->count) {
     struct Unit unit = input->units[input->position++];
-    if (!reader->quoted || reader->literal_next) {
+    if (reader->literal_next) {
       reader->literal_next = false;
       return unit;
     }
@@ -2131,7 +2123,7 @@ static size_t backquote_body(
   size_t *end
 ) {
   struct Input *input = &parser->input;
-  struct BackquoteInput reader = {.input = input, .quoted = double_quoted};
+  struct BackquoteInput reader = {.input = input};
   while (!parser->plan->failed && input->position < input->count) {
     struct Unit unit = backquote_next(&reader);
     if (unit.value < 0) break;
@@ -2347,16 +2339,16 @@ static void expansion(
 static void escaped_character(struct Parser *parser, struct Token *token) {
   struct Input *input = &parser->input;
   struct Unit slash = pop(input);
+  bool complete = raw(input, input->position) >= 0;
   if (
-    raw(input, input->position) < 0 &&
+    !complete &&
     (parser->backquote_end || input->end == parser->plan->source_end)
   ) {
     text_push(parser, &token->text, slash);
     return;
   }
   size_t owner = owner_begin(parser, BEGIN_ESCAPED_CHARACTER, slash.start);
-  if (raw(input, input->position) >= 0)
-    text_push(parser, &token->text, escaped_unit(input, slash));
+  if (complete) text_push(parser, &token->text, escaped_unit(input, slash));
   else
     issue(
       parser,
@@ -2497,11 +2489,22 @@ static struct Fault token_fault(
   return fault;
 }
 
+static void text_bytes(
+  struct Parser *parser,
+  struct Text *text,
+  const uint8_t *bytes,
+  size_t count,
+  size_t start,
+  size_t end
+) {
+  for (size_t i = 0; i < count; i++)
+    text_push(parser, text, (struct Unit){bytes[i], start, end});
+}
+
 static void encode(struct Parser *parser, struct Text *text, struct Unit unit) {
   uint8_t bytes[4];
   size_t count = encode_value(unit.value, bytes);
-  for (size_t i = 0; i < count; i++)
-    text_push(parser, text, (struct Unit){bytes[i], unit.start, unit.end});
+  text_bytes(parser, text, bytes, count, unit.start, unit.end);
 }
 
 enum DelimiterQuote {
@@ -2547,16 +2550,19 @@ static struct DelimiterGroup *delimiter_top(struct DelimiterReader *reader) {
   return reader->count ? &reader->groups[reader->count - 1] : NULL;
 }
 
+static bool delimiter_nest(const struct DelimiterReader *reader) {
+  struct Plan *plan = reader->parser->plan;
+  if (plan->depth + reader->count + reader->quotes < NESTING_LIMIT) return true;
+  plan->failed = true;
+  return false;
+}
+
 static bool delimiter_push(
   struct DelimiterReader *reader,
   enum DelimiterGroupKind kind,
   int32_t closing
 ) {
-  struct Plan *plan = reader->parser->plan;
-  if (plan->depth + reader->count + reader->quotes >= NESTING_LIMIT) {
-    plan->failed = true;
-    return false;
-  }
+  if (!delimiter_nest(reader)) return false;
   struct DelimiterGroup *grown = diagnostic_grow(
     reader->groups,
     &reader->capacity,
@@ -2564,7 +2570,7 @@ static bool delimiter_push(
     sizeof(*grown)
   );
   if (!grown) {
-    plan->failed = true;
+    reader->parser->plan->failed = true;
     return false;
   }
   reader->groups = grown;
@@ -2590,11 +2596,18 @@ static void delimiter_pop(struct DelimiterReader *reader) {
   reader->quotes = group->quotes;
 }
 
+static size_t delimiter_outer(
+  const struct DelimiterReader *reader,
+  enum DelimiterGroupKind skipped
+) {
+  size_t depth = reader->count;
+  while (depth && reader->groups[depth - 1].kind == skipped) depth--;
+  return depth;
+}
+
 static bool
 delimiter_close(struct DelimiterReader *reader, enum DelimiterGroupKind kind) {
-  size_t depth = reader->count;
-  while (depth && reader->groups[depth - 1].kind == DELIMITER_PARAMETER)
-    depth--;
+  size_t depth = delimiter_outer(reader, DELIMITER_PARAMETER);
   if (!depth || reader->groups[depth - 1].kind != kind) return false;
   delimiter_copy(reader);
   while (reader->count >= depth) delimiter_pop(reader);
@@ -2605,10 +2618,7 @@ static void
 delimiter_single_quote(struct DelimiterReader *reader, bool dollar) {
   struct Parser *parser = reader->parser;
   struct Input *input = &parser->input;
-  if (parser->plan->depth + reader->count + reader->quotes >= NESTING_LIMIT) {
-    parser->plan->failed = true;
-    return;
-  }
+  if (!delimiter_nest(reader)) return;
   reader->document.quoted = true;
   pop(input);
   bool terminated = false;
@@ -2627,15 +2637,18 @@ delimiter_single_quote(struct DelimiterReader *reader, bool dollar) {
           escape.source.end,
           parser->owner
         };
-      for (size_t i = 0; i < escape.count && !terminated; i++) {
-        if (escape.bytes[i] == 0) terminated = true;
-        else
-          text_push(
-            parser,
-            &reader->document.delimiter,
-            (struct Unit){escape.bytes[i], unit.start, escape.source.end}
-          );
-      }
+      size_t count = 0;
+      while (count < escape.count && escape.bytes[count]) count++;
+      if (!terminated)
+        text_bytes(
+          parser,
+          &reader->document.delimiter,
+          escape.bytes,
+          count,
+          unit.start,
+          escape.source.end
+        );
+      if (count < escape.count) terminated = true;
     } else if (!terminated) delimiter_encode(reader, unit);
   }
   reader->incomplete = true;
@@ -2691,12 +2704,14 @@ static void delimiter_parameter_prefix(struct DelimiterReader *reader) {
     struct Unit unit = pop(input);
     uint8_t bytes[4];
     size_t length = encode_value(c, bytes);
-    for (size_t i = 1; i < length; i++)
-      text_push(
-        reader->parser,
-        &reader->document.delimiter,
-        (struct Unit){bytes[i], unit.start, unit.end}
-      );
+    text_bytes(
+      reader->parser,
+      &reader->document.delimiter,
+      bytes + 1,
+      length - 1,
+      unit.start,
+      unit.end
+    );
     return;
   }
   bool name = is_name_start_character(c), positional = is_decimal_digit(c);
@@ -2740,10 +2755,33 @@ static void delimiter_dollar(struct DelimiterReader *reader) {
   }
 }
 
-static bool delimiter_in_parameter(struct DelimiterReader *reader) {
-  size_t depth = reader->count;
-  while (depth && reader->groups[depth - 1].kind == DELIMITER_DOUBLE_QUOTE)
-    depth--;
+static void delimiter_double_quote(struct DelimiterReader *reader) {
+  pop(&reader->parser->input);
+  switch (reader->quote) {
+    case DELIMITER_PARAMETER_QUOTED:
+      if (delimiter_push(reader, DELIMITER_DOUBLE_QUOTE, '"'))
+        reader->quote = DELIMITER_DOUBLE_QUOTED;
+      break;
+    case DELIMITER_DOUBLE_QUOTED:
+      reader->document.quoted = true;
+      if (
+        reader->count && delimiter_top(reader)->kind == DELIMITER_DOUBLE_QUOTE
+      )
+        delimiter_pop(reader);
+      else {
+        reader->quote = DELIMITER_UNQUOTED;
+        reader->quotes--;
+      }
+      break;
+    default:
+      if (!delimiter_nest(reader)) return;
+      reader->quote = DELIMITER_DOUBLE_QUOTED;
+      reader->quotes++;
+  }
+}
+
+static bool delimiter_in_parameter(const struct DelimiterReader *reader) {
+  size_t depth = delimiter_outer(reader, DELIMITER_DOUBLE_QUOTE);
   return depth && reader->groups[depth - 1].kind == DELIMITER_PARAMETER;
 }
 
@@ -2793,40 +2831,14 @@ static bool delimiter_step(struct DelimiterReader *reader) {
     reader->quote == DELIMITER_DOUBLE_QUOTED ||
     reader->quote == DELIMITER_PARAMETER_QUOTED
   ) {
-    if (c != '"') delimiter_copy(reader);
-    else {
-      pop(input);
-      if (reader->quote == DELIMITER_PARAMETER_QUOTED) {
-        if (delimiter_push(reader, DELIMITER_DOUBLE_QUOTE, '"'))
-          reader->quote = DELIMITER_DOUBLE_QUOTED;
-      } else {
-        reader->document.quoted = true;
-        if (
-          reader->count && delimiter_top(reader)->kind == DELIMITER_DOUBLE_QUOTE
-        )
-          delimiter_pop(reader);
-        else {
-          reader->quote = DELIMITER_UNQUOTED;
-          reader->quotes--;
-        }
-      }
-    }
+    if (c == '"') delimiter_double_quote(reader);
+    else delimiter_copy(reader);
   } else if (!reader->count && separator(c)) return false;
   else if (reader->quote != DELIMITER_ARITHMETIC_QUOTED && c == '\'')
     delimiter_single_quote(reader, false);
-  else if (reader->quote != DELIMITER_ARITHMETIC_QUOTED && c == '"') {
-    if (
-      reader->parser->plan->depth + reader->count + reader->quotes >=
-      NESTING_LIMIT
-    ) {
-      reader->parser->plan->failed = true;
-      return false;
-    }
-    pop(input);
-    reader->quote = DELIMITER_DOUBLE_QUOTED;
-    reader->quotes++;
-  } else if (c == ')' && delimiter_close(reader, DELIMITER_COMMAND))
-    return true;
+  else if (reader->quote != DELIMITER_ARITHMETIC_QUOTED && c == '"')
+    delimiter_double_quote(reader);
+  else if (c == ')' && delimiter_close(reader, DELIMITER_COMMAND)) return true;
   else if (reader->count && c == delimiter_top(reader)->closing) {
     if (delimiter_top(reader)->kind == DELIMITER_ARITHMETIC) {
       delimiter_copy(reader);
@@ -2925,6 +2937,10 @@ static void here_document_line(
   }
 }
 
+static bool line_complete(const struct Text *line) {
+  return line->count && line->units[line->count - 1].value == '\n';
+}
+
 static bool here_document_end_line(
   struct Parser *parser,
   const struct Document *here,
@@ -2939,7 +2955,7 @@ static bool here_document_end_line(
   bytes->count = 0;
   for (size_t i = *first; i < line->count && line->units[i].value != '\n'; i++)
     encode(parser, bytes, line->units[i]);
-  bool newline = line->count && line->units[line->count - 1].value == '\n';
+  bool newline = line_complete(line);
   bool source_eof = parser->input.position == parser->input.count &&
     parser->input.end == parser->plan->source_end;
   bool found = bytes->count == here->delimiter.count &&
@@ -2965,7 +2981,7 @@ static bool here_document_lines(
     here_document_line(parser, here, &line);
     size_t first;
     found = here_document_end_line(parser, here, &line, &first, &bytes);
-    *at_line_start = line.count && line.units[line.count - 1].value == '\n';
+    *at_line_start = line_complete(&line);
     if (found) *boundary = line_start;
     else
       for (size_t i = first; i < line.count; i++)
@@ -3006,6 +3022,12 @@ static bool here_document(
   return at_line_start;
 }
 
+static void clear_documents(struct Parser *parser) {
+  for (size_t i = 0; i < parser->document_count; i++)
+    ts_free(parser->documents[i].delimiter.units);
+  parser->document_count = 0;
+}
+
 static void documents(struct Parser *parser, bool at_line_start) {
   struct Input *input = &parser->input;
   size_t body_start = at_line_start ? consumed_offset(input) : input->end;
@@ -3019,9 +3041,7 @@ static void documents(struct Parser *parser, bool at_line_start) {
     at_line_start = here_document(parser, here, at_line_start, body_start);
     body_start = consumed_offset(input);
   }
-  for (size_t document = 0; document < parser->document_count; document++)
-    ts_free(parser->documents[document].delimiter.units);
-  parser->document_count = 0;
+  clear_documents(parser);
 }
 
 static void take(struct Parser *parser) {
@@ -3250,7 +3270,7 @@ enum RecoveryBoundary {
 };
 
 static bool redirect_operand(struct Parser *parser, enum Lexeme kind) {
-  if ((kind == HERE || kind == HERE_STRIP) && !parser->ready)
+  if (kind == HERE || kind == HERE_STRIP)
     declare_here_document(parser, kind == HERE_STRIP);
   bool word = look(parser)->kind == WORD;
   if (word) take(parser);
@@ -3843,8 +3863,7 @@ static void parse(struct Parser *parser) {
 
 static void clear_parser(struct Parser *parser) {
   ts_free(parser->token.text.units);
-  for (size_t i = 0; i < parser->document_count; i++)
-    ts_free(parser->documents[i].delimiter.units);
+  clear_documents(parser);
   ts_free(parser->documents);
 }
 

@@ -20451,6 +20451,70 @@
     ]
   },
   {
+    "name": "unquoted backquotes remove a delimiter continuation before the following redirect fault",
+    "source": ": `cat <<'a\\\nb'\nBODY\nab\ncat >\n`\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 28,
+          "end": 29
+        },
+        "range": [
+          29,
+          29
+        ],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [
+            29,
+            29
+          ]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [
+            29,
+            29
+          ]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "control operands below 0x40 bound the quoted here document before the next fault",
+    "source": "cat <<$'\\c0\\c!\\c'\\c>'\n${x:bad}\npag~\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 40,
+          "end": 41
+        },
+        "range": [
+          41,
+          41
+        ],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [
+            41,
+            41
+          ]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [
+            41,
+            41
+          ]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
     "name": "generated NUL does not hide an invalid control escape",
     "source": "echo $'A\\0\\c\\q'",
     "expected": [
@@ -21089,6 +21153,247 @@
           "range": [
             44,
             44
+          ]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter parameter colon consumes its first brace and matches the complete word",
+    "source": "cat <<${x:}}\n$probe\n${x:}}\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 31
+        },
+        "range": [
+          32,
+          32
+        ],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [
+            32,
+            32
+          ]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [
+            32,
+            32
+          ]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter parameter colon preserves a backslash and keeps the body unquoted",
+    "source": "cat <<${x:\\}}\n${x:}\n${x:\\}}\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 14
+        },
+        "range": [
+          18,
+          18
+        ],
+        "fault": {
+          "kind": "parameter_operator_gap",
+          "range": [
+            18,
+            18
+          ]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [
+            18,
+            18
+          ]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 32
+        },
+        "range": [
+          33,
+          33
+        ],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [
+            33,
+            33
+          ]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [
+            33,
+            33
+          ]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter parameter prefixes retain literal quotes and escapes in queued documents",
+    "source": "cat <<${x'} <<${#\\a}\n${x'}\n${#\\a}\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 38
+        },
+        "range": [
+          39,
+          39
+        ],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [
+            39,
+            39
+          ]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [
+            39,
+            39
+          ]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter parameter prefix consumes the first command substitution closer",
+    "source": "cat <<$(f ${x))\nBODY\n$(f ${x))\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 35
+        },
+        "range": [
+          36,
+          36
+        ],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [
+            36,
+            36
+          ]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [
+            36,
+            36
+          ]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter parameter colon consumes the first quote and leaves the later quote unclosed",
+    "source": "cat <<${x:\"a\"}\nBODY\nEND\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "word",
+          "start": 6
+        },
+        "range": [
+          30,
+          30
+        ],
+        "fault": {
+          "kind": "here_document_delimiter_ending_gap",
+          "range": [
+            30,
+            30
+          ]
+        },
+        "boundary": {
+          "kind": "recovery_eof",
+          "range": [
+            30,
+            30
+          ]
+        },
+        "fragments": []
+      }
+    ]
+  },
+  {
+    "name": "delimiter parameter colon consumes a backslash without escaping the closing brace at EOF",
+    "source": "cat <<${x:\\}",
+    "expected": []
+  },
+  {
+    "name": "delimiter hash prefix removal keeps the body unquoted and resumes after its end",
+    "source": "cat <<${#\\}}\n${x:}\n${#}}\ncat >\n",
+    "expected": [
+      {
+        "owner": {
+          "kind": "parameter_expansion",
+          "start": 13
+        },
+        "range": [
+          17,
+          17
+        ],
+        "fault": {
+          "kind": "parameter_operator_gap",
+          "range": [
+            17,
+            17
+          ]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [
+            17,
+            17
+          ]
+        },
+        "fragments": []
+      },
+      {
+        "owner": {
+          "kind": "io_redirect",
+          "start": 29
+        },
+        "range": [
+          30,
+          30
+        ],
+        "fault": {
+          "kind": "redirection_target_gap",
+          "range": [
+            30,
+            30
+          ]
+        },
+        "boundary": {
+          "kind": "recovery_resume",
+          "range": [
+            30,
+            30
           ]
         },
         "fragments": []

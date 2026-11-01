@@ -12,6 +12,19 @@ for (const [word, delimiter, quoted] of [
   [`\${#x:}`, `\${#x:}`, false],
   [`\${.}`, `\${}`, false],
   [`\${#.}`, `\${#}`, false],
+  [`\${x'}`, `\${x'}`, false],
+  [`\${x\\}`, `\${x\\}`, false],
+  [`\${x:\\}`, `\${x:\\}`, false],
+  [`\${x:}}`, `\${x:}}`, false],
+  [`\${#\\a}`, `\${#\\a}`, false],
+  [`$(f \${x))`, `$(f \${x))`, false],
+  [`$(f \${x:-)`, `$(f \${x:-)`, false],
+  [`\`g \${y\`\``, `\`g \${y\`\``, false],
+  [`\${#'}`, `\${#}`, false],
+  [`\${#"}`, `\${#}`, false],
+  [`\${#\\}`, `\${#}`, false],
+  [`\${#)}`, `\${#}`, false],
+  [`\${#\`}`, `\${#}`, false],
   [`\${a b}`, `\${a b}`, false],
   ["$(if)", "$(if)", false],
   ["$(;)", "$(;)", false],
@@ -41,7 +54,21 @@ for (const [word, delimiter, quoted] of [
   }
 }
 
-for (const word of [`\${`, "$(if", "$((1+)", "'END", '"END', "`if"]) {
+for (const word of [
+  `\${`,
+  "$(if",
+  "$((1+)",
+  `$(\${#)}`,
+  `\${x:}`,
+  `\${x:\\\n}`,
+  `\${x:"a"}`,
+  `\${#"a"}`,
+  `$(f \${x)`,
+  `\`g \${y\``,
+  "'END",
+  '"END',
+  "`if",
+]) {
   test(`an unclosed delimiter ${JSON.stringify(word)} belongs to its word`, () => {
     const source = `cat <<${word}`;
     const end = Buffer.byteLength(source);
@@ -754,24 +781,30 @@ for (const [name, tail, kind] of [
   ["an invalid UTF-8 byte", [255], "invalid_encoding"],
   ["a NUL", [0], "nul_character"],
 ]) {
-  for (const suffix of ["", "\nbody\n"]) {
-    test(`${name} in a here-document delimiter remains unrecovered with ${JSON.stringify(suffix)}`, () => {
-      const source = [
-        ...Buffer.from("cat <<"),
-        ...tail,
-        ...Buffer.from(suffix),
-      ];
-      const end = source.length;
-      assert.deepEqual(parse(source).issues, [
-        {
-          owner: null,
-          range: [6, end],
-          fault: { kind, range: [6, 7] },
-          boundary: { kind: "recovery_eof", range: [end, end] },
-          fragments: suffix ? [[7, end]] : [],
-        },
-      ]);
-    });
+  for (const [prefix, closer] of [
+    ["cat <<", ""],
+    ["cat <<${#", "}"],
+  ]) {
+    for (const suffix of ["", "\nbody\n"]) {
+      test(`${name} in a here-document delimiter remains unrecovered with ${JSON.stringify([prefix, closer, suffix])}`, () => {
+        const source = [
+          ...Buffer.from(prefix),
+          ...tail,
+          ...Buffer.from(closer + suffix),
+        ];
+        const start = Buffer.byteLength(prefix);
+        const end = source.length;
+        assert.deepEqual(parse(source).issues, [
+          {
+            owner: null,
+            range: [start, end],
+            fault: { kind, range: [start, start + tail.length] },
+            boundary: { kind: "recovery_eof", range: [end, end] },
+            fragments: closer || suffix ? [[start + tail.length, end]] : [],
+          },
+        ]);
+      });
+    }
   }
 }
 
